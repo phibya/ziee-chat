@@ -31,25 +31,15 @@ pub struct ChatMessageRequest {
     pub assistant_id: Uuid,
     pub file_ids: Option<Vec<Uuid>>, // Optional file attachments
     pub enabled_tools: Option<Vec<EnabledMCPTool>>, // Optional MCP tools to send to AI
+    pub message_id: Option<Uuid>, // Optional message ID to resume from
 }
 
+// Empty structs for unit-like events
 #[derive(Debug, Clone, Serialize, JsonSchema)]
-pub struct StreamChunkData {
-    pub delta: String,
-    pub message_id: Option<String>,
-}
+pub struct ConnectedData {}
 
 #[derive(Debug, Clone, Serialize, JsonSchema)]
-pub struct StreamCompleteData {
-    pub message_id: String,
-    pub conversation_id: String,
-    pub role: String,
-    pub originated_from_id: String,
-    pub edit_count: i32,
-    pub created_at: String,
-    pub updated_at: String,
-    pub total_tokens: Option<i32>,
-}
+pub struct CompleteData {}
 
 #[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct StreamErrorData {
@@ -57,44 +47,92 @@ pub struct StreamErrorData {
     pub code: String,
 }
 
-// SSE connected data for chat streaming
+// New message lifecycle events
 #[derive(Debug, Clone, Serialize, JsonSchema)]
-pub struct SSEChatStreamConnectedData {
-    pub message: Option<String>,
+pub struct NewUserMessageData {
+    pub message_id: Uuid,
+}
+
+#[derive(Debug, Clone, Serialize, JsonSchema)]
+pub struct NewAssistantMessageData {
+    pub message_id: Uuid,
+}
+
+// New content streaming events
+#[derive(Debug, Clone, Serialize, JsonSchema)]
+pub struct NewMessageContentData {
+    pub message_content_id: Uuid,
+    pub message_id: Uuid,
+}
+
+#[derive(Debug, Clone, Serialize, JsonSchema)]
+pub struct MessageContentChunkData {
+    pub message_content_id: Uuid,
+    pub delta: String,
+}
+
+// Tool call event (tool is being called)
+#[derive(Debug, Clone, Serialize, JsonSchema)]
+pub struct ToolCallData {
+    pub message_content_id: Uuid,
+    pub message_id: Uuid,
+    pub tool_name: String,
+    pub server_id: Uuid,
+    pub arguments: serde_json::Value,
+    pub call_id: String,
 }
 
 // SSE data for tool call pending approval
 #[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct ToolCallPendingApprovalData {
+    pub message_content_id: Uuid,
     pub message_id: Uuid,
     pub tool_name: String,
     pub server_id: Uuid,
-    pub description: Option<String>,
     pub arguments: serde_json::Value,
 }
 
-// SSE data for tool call complete
+// SSE data for tool result
 #[derive(Debug, Clone, Serialize, JsonSchema)]
-pub struct ToolCallCompleteData {
+pub struct ToolResultData {
+    pub message_content_id: Uuid,
+    pub message_id: Uuid,
     pub call_id: String,
+    pub result: serde_json::Value,
     pub success: bool,
-    pub result: Option<serde_json::Value>,
     pub error_message: Option<String>,
+}
+
+// Conversation title updated
+#[derive(Debug, Clone, Serialize, JsonSchema)]
+pub struct TitleUpdatedData {
+    pub title: String,
+}
+
+// Maximum tool call iterations reached
+#[derive(Debug, Clone, Serialize, JsonSchema)]
+pub struct MaxIterationReachedData {
+    pub iteration: i32,
 }
 
 // SSE event types for chat streaming
 crate::sse_event_enum! {
     #[derive(Debug, Clone, Serialize, JsonSchema)]
     pub enum SSEChatStreamEvent {
-        Connected(SSEChatStreamConnectedData),
-        Start(String),
-        Chunk(StreamChunkData),
-        Complete(StreamCompleteData),
+        Connected(ConnectedData),
+        NewUserMessage(NewUserMessageData),
+        NewAssistantMessage(NewAssistantMessageData),
+        NewMessageContent(NewMessageContentData),
+        MessageContentChunk(MessageContentChunkData),
+        ToolCall(ToolCallData),
+        ToolCallPendingApproval(ToolCallPendingApprovalData),
+        ToolResult(ToolResultData),
+        TitleUpdated(TitleUpdatedData),
+        MaxIterationReached(MaxIterationReachedData),
+        Complete(CompleteData),
         Error(StreamErrorData),
         EditedMessage(Message),
         CreatedBranch(crate::database::models::MessageBranch),
-        ToolCallPendingApproval(ToolCallPendingApprovalData),
-        ToolCallComplete(ToolCallCompleteData),
     }
 }
 
@@ -250,7 +288,7 @@ async fn stream_ai_response(
         let conversation_id = request.conversation_id;
 
         // Wait for title generation to complete before streaming the response
-        let _ = generate_and_update_conversation_title(conversation_id, user_id, &model)
+        let _ = generate_and_update_conversation_title(conversation_id, user_id, &model, &tx)
             .await;
     }
 
@@ -267,6 +305,39 @@ async fn stream_ai_response(
         None
     };
 
+    // Create or get the assistant message ID BEFORE streaming
+    let message_id = if let Some(existing_message_id) = last_assistant_message_id {
+        // Resuming from previous message
+        existing_message_id
+    } else {
+        // New message - create empty message first
+        let assistant_message_req = SaveMessageRequest {
+            conversation_id: request.conversation_id,
+            content: String::new(), // Empty content initially
+            role: "assistant".to_string(),
+            model_id: request.model_id,
+            file_ids: None,
+        };
+
+        match chat::save_message(assistant_message_req, user_id, active_branch_id).await {
+            Ok(assistant_message) => {
+                let asst_msg_id = assistant_message.id;
+
+                // Send NewAssistantMessage event
+                let new_asst_msg_event = SSEChatStreamEvent::NewAssistantMessage(NewAssistantMessageData {
+                    message_id: asst_msg_id,
+                });
+                let _ = tx.send(Ok(new_asst_msg_event.into()));
+
+                asst_msg_id
+            }
+            Err(e) => {
+                send_error(&tx, format!("Error creating assistant message: {}", e), ErrorCode::SystemDatabaseError).await;
+                return Err(e.into());
+            }
+        }
+    };
+
     // Call AI model with streaming
     match ai_model.chat_stream(SimplifiedChatRequest {
         messages,
@@ -276,6 +347,7 @@ async fn stream_ai_response(
         Ok(mut stream) => {
             let mut full_content = String::new();
             let mut tool_use_option: Option<crate::database::models::ToolUse> = None;
+            let mut message_content_id: Option<Uuid> = None;
 
             // Process the stream
             while let Some(chunk_result) = stream.next().await {
@@ -284,12 +356,27 @@ async fn stream_ai_response(
                         if let Some(content) = &chunk.content {
                             full_content.push_str(content);
 
-                            // Send chunk to client
-                            let chunk_event = SSEChatStreamEvent::Chunk(StreamChunkData {
-                                delta: content.to_string(),
-                                message_id: None,
-                            });
-                            let _ = tx.send(Ok(chunk_event.into()));
+                            // Create message_content_id and send NewMessageContent on first chunk
+                            if message_content_id.is_none() {
+                                let content_id = Uuid::new_v4();
+                                message_content_id = Some(content_id);
+
+                                // Send NewMessageContent event BEFORE first chunk
+                                let new_content_event = SSEChatStreamEvent::NewMessageContent(NewMessageContentData {
+                                    message_content_id: content_id,
+                                    message_id,
+                                });
+                                let _ = tx.send(Ok(new_content_event.into()));
+                            }
+
+                            // Send chunk to client with content_id
+                            if let Some(content_id) = message_content_id {
+                                let chunk_event = SSEChatStreamEvent::MessageContentChunk(MessageContentChunkData {
+                                    message_content_id: content_id,
+                                    delta: content.to_string(),
+                                });
+                                let _ = tx.send(Ok(chunk_event.into()));
+                            }
                         }
 
                         // Check for tool use
@@ -313,42 +400,16 @@ async fn stream_ai_response(
                 }
             }
 
-            // Save or append the assistant message content
-            let message_id = if let Some(existing_message_id) = last_assistant_message_id {
-                // Resuming from previous message - append content
-                match chat::append_text_content_to_message(existing_message_id, full_content.clone()).await {
-                    Ok(_) => existing_message_id,
+            // Save the text content to the message
+            if !full_content.is_empty() {
+                match chat::append_text_content_to_message(message_id, full_content.clone()).await {
+                    Ok(_) => {},
                     Err(e) => {
-                        let error_event = SSEChatStreamEvent::Error(StreamErrorData {
-                            error: format!("Error appending to assistant message: {}", e),
-                            code: ErrorCode::SystemDatabaseError.as_str().to_string(),
-                        });
-                        let _ = tx.send(Ok(error_event.into()));
+                        send_error(&tx, format!("Error saving text content: {}", e), ErrorCode::SystemDatabaseError).await;
                         return Err(e.into());
                     }
                 }
-            } else {
-                // New message - save complete message
-                let assistant_message_req = SaveMessageRequest {
-                    conversation_id: request.conversation_id,
-                    content: full_content.clone(),
-                    role: "assistant".to_string(),
-                    model_id: request.model_id,
-                    file_ids: None, // Assistant messages don't have file attachments
-                };
-
-                match chat::save_message(assistant_message_req, user_id, active_branch_id).await {
-                    Ok(assistant_message) => assistant_message.id,
-                    Err(e) => {
-                        let error_event = SSEChatStreamEvent::Error(StreamErrorData {
-                            error: format!("Error saving assistant message: {}", e),
-                            code: ErrorCode::SystemDatabaseError.as_str().to_string(),
-                        });
-                        let _ = tx.send(Ok(error_event.into()));
-                        return Err(e.into());
-                    }
-                }
-            };
+            }
 
             // NOTE: Complete event is sent by the caller (send_message_stream)
             // after the tool approval loop completes, not here
@@ -403,14 +464,8 @@ pub async fn send_message_stream(
     // Spawn a task to handle the async AI interaction
     tokio::spawn(async move {
         // Send initial connected event
-        let connected_event = SSEChatStreamEvent::Connected(SSEChatStreamConnectedData {
-            message: Some("Connected to chat stream".to_string()),
-        });
+        let connected_event = SSEChatStreamEvent::Connected(ConnectedData {});
         let _ = tx.send(Ok(connected_event.into()));
-
-        // Send start event
-        let start_event = SSEChatStreamEvent::Start("Chat stream started".to_string());
-        let _ = tx.send(Ok(start_event.into()));
 
         // Get active branch ID upfront
         let _active_branch_id = match chat::get_conversation_by_id(request.conversation_id, auth_user.user.id).await {
@@ -428,97 +483,105 @@ pub async fn send_message_stream(
         // ============================================
         // MAIN LOOP: Max 5 iterations
         // ============================================
-        const MAX_ITERATIONS: usize = 5;
+        const MAX_ITERATIONS: usize = 1;
         let mut iteration = 0;
-        let mut last_assistant_message_id: Option<Uuid> = None;
+        let mut last_assistant_message_id: Option<Uuid> = request.message_id;
+        let is_resuming = request.message_id.is_some();
 
         while iteration < MAX_ITERATIONS {
             iteration += 1;
 
             // ----------------------------------------
-            // 1. Check last message for pending approval
+            // 1. Check last message for pending approval (only if resuming)
             // ----------------------------------------
-            let messages = match chat::get_conversation_messages(request.conversation_id, auth_user.user.id).await {
-                Ok(msgs) => msgs,
-                Err(e) => {
-                    send_error(&tx, format!("Failed to load messages: {}", e), ErrorCode::SystemDatabaseError).await;
-                    return;
-                }
-            };
-
-            let last_message = messages.last();
-            let needs_approval = if let Some(msg) = last_message {
-                msg.role == "assistant"
-                    && msg.contents.iter().any(|c| c.content_type == MessageContentType::ToolCallPendingApproval)
-            } else {
-                false
-            };
-
-            if needs_approval {
-                let last_msg = last_message.unwrap();
-
-                // Find the pending approval content
-                let pending_content = last_msg
-                    .contents
-                    .iter()
-                    .find(|c| c.content_type == MessageContentType::ToolCallPendingApproval);
-
-                if let Some(content) = pending_content {
-                    // Try to parse the pending approval data
-                    let tool_data: Result<MessageContentData, _> = serde_json::from_value(
-                        serde_json::to_value(&content.content).unwrap_or_default()
-                    );
-
-                    if let Ok(MessageContentData::ToolCallPendingApproval { tool_name, server_id, arguments }) = tool_data {
-                        // Check if approved
-                        let is_approved = match chat::check_tool_approval(
-                            request.conversation_id,
-                            server_id,
-                            &tool_name,
-                        ).await {
-                            Ok(approved) => approved,
-                            Err(e) => {
-                                send_error(&tx, format!("Failed to check approval: {}", e), ErrorCode::SystemDatabaseError).await;
-                                return;
-                            }
-                        };
-
-                        if !is_approved {
-                            // Send approval request event and EXIT
-                            let approval_event = SSEChatStreamEvent::ToolCallPendingApproval(ToolCallPendingApprovalData {
-                                message_id: last_msg.id,
-                                tool_name: tool_name.clone(),
-                                server_id,
-                                description: None, // TODO: Get from MCP server
-                                arguments: arguments.clone(),
-                            });
-                            let _ = tx.send(Ok(approval_event.into()));
-                            return;
-                        }
-
-                        // Approved! Execute tool
-                        last_assistant_message_id = Some(last_msg.id);
-
-                        if let Err(e) = execute_tool_and_save_result(
-                            last_msg.id,
-                            server_id,
-                            &tool_name,
-                            &arguments,
-                            &tx,
-                        ).await {
-                            send_error(&tx, format!("Tool execution failed: {}", e), ErrorCode::SystemInternalError).await;
-                            return;
-                        }
-
-                        // Continue to next iteration
-                        continue;
-                    } else {
-                        send_error(&tx, "Invalid pending approval data".to_string(), ErrorCode::SystemInternalError).await;
+            if is_resuming {
+                let messages = match chat::get_conversation_messages(request.conversation_id, auth_user.user.id).await {
+                    Ok(msgs) => msgs,
+                    Err(e) => {
+                        send_error(&tx, format!("Failed to load messages: {}", e), ErrorCode::SystemDatabaseError).await;
                         return;
                     }
+                };
+
+                let last_message = messages.last();
+                let needs_approval = if let Some(msg) = last_message {
+                    msg.role == "assistant"
+                        && msg.contents.iter().any(|c| c.content_type == MessageContentType::ToolCallPendingApproval)
+                } else {
+                    false
+                };
+
+                if needs_approval {
+                    let last_msg = last_message.unwrap();
+
+                    // Find the pending approval content
+                    let pending_content = last_msg
+                        .contents
+                        .iter()
+                        .find(|c| c.content_type == MessageContentType::ToolCallPendingApproval);
+
+                    if let Some(content) = pending_content {
+                        // Try to parse the pending approval data
+                        let tool_data: Result<MessageContentData, _> = serde_json::from_value(
+                            serde_json::to_value(&content.content).unwrap_or_default()
+                        );
+
+                        if let Ok(MessageContentData::ToolCallPendingApproval { tool_name, server_id, arguments }) = tool_data {
+                            // Check if approved
+                            let is_approved = match chat::check_tool_approval(
+                                request.conversation_id,
+                                server_id,
+                                &tool_name,
+                            ).await {
+                                Ok(approved) => approved,
+                                Err(e) => {
+                                    send_error(&tx, format!("Failed to check approval: {}", e), ErrorCode::SystemDatabaseError).await;
+                                    return;
+                                }
+                            };
+
+                            if !is_approved {
+                                // Send approval request event and EXIT
+                                let approval_event = SSEChatStreamEvent::ToolCallPendingApproval(ToolCallPendingApprovalData {
+                                    message_content_id: content.id,
+                                    message_id: last_msg.id,
+                                    tool_name: tool_name.clone(),
+                                    server_id,
+                                    arguments: arguments.clone(),
+                                });
+                                let _ = tx.send(Ok(approval_event.into()));
+                                return;
+                            }
+
+                            // Approved! Execute tool
+                            last_assistant_message_id = Some(last_msg.id);
+
+                            if let Err(e) = execute_tool_and_save_result(
+                                content.id, // message_content_id from pending approval
+                                last_msg.id,
+                                server_id,
+                                &tool_name,
+                                &arguments,
+                                &tx,
+                            ).await {
+                                send_error(&tx, format!("Tool execution failed: {}", e), ErrorCode::SystemInternalError).await;
+                                return;
+                            }
+
+                            // Continue to next iteration
+                            continue;
+                        } else {
+                            send_error(&tx, "Invalid pending approval data".to_string(), ErrorCode::SystemInternalError).await;
+                            return;
+                        }
+                    }
                 }
-            } else if iteration == 1 {
-                // First iteration, not resuming - save user message
+            }
+
+            // ----------------------------------------
+            // Save user message on first iteration if NOT resuming
+            // ----------------------------------------
+            if iteration == 1 && !is_resuming {
                 let user_message_req = SaveMessageRequest {
                     conversation_id: request.conversation_id,
                     content: request.content.clone(),
@@ -527,9 +590,18 @@ pub async fn send_message_stream(
                     file_ids: request.file_ids.clone(),
                 };
 
-                if let Err(e) = chat::save_message(user_message_req, auth_user.user.id, None).await {
-                    send_error(&tx, format!("Failed to save user message: {}", e), ErrorCode::SystemDatabaseError).await;
-                    return;
+                match chat::save_message(user_message_req, auth_user.user.id, None).await {
+                    Ok(user_message) => {
+                        // Send NewUserMessage event
+                        let new_user_message_event = SSEChatStreamEvent::NewUserMessage(NewUserMessageData {
+                            message_id: user_message.id,
+                        });
+                        let _ = tx.send(Ok(new_user_message_event.into()));
+                    }
+                    Err(e) => {
+                        send_error(&tx, format!("Failed to save user message: {}", e), ErrorCode::SystemDatabaseError).await;
+                        return;
+                    }
                 }
             }
 
@@ -557,12 +629,34 @@ pub async fn send_message_stream(
                     arguments: tool_request.arguments.clone(),
                 };
 
-                if let Err(e) = chat::save_pending_tool_approval_content(
+                match chat::save_pending_tool_approval_content(
                     result.message_id,
                     pending_content,
                 ).await {
-                    send_error(&tx, format!("Failed to save pending approval: {}", e), ErrorCode::SystemDatabaseError).await;
-                    return;
+                    Ok(message_content_id) => {
+                        // Send NewMessageContent event
+                        let new_content_event = SSEChatStreamEvent::NewMessageContent(NewMessageContentData {
+                            message_content_id,
+                            message_id: result.message_id,
+                        });
+                        let _ = tx.send(Ok(new_content_event.into()));
+
+                        // Send ToolCallPendingApproval event (for UI modal) - BEFORE ToolCall
+                        let approval_event = SSEChatStreamEvent::ToolCallPendingApproval(ToolCallPendingApprovalData {
+                            message_content_id,
+                            message_id: result.message_id,
+                            tool_name: tool_request.tool_name,
+                            server_id: tool_request.server_id,
+                            arguments: tool_request.arguments,
+                        });
+                        let _ = tx.send(Ok(approval_event.into()));
+
+                        // NOTE: ToolCall event is sent AFTER approval in execute_tool_and_save_result
+                    }
+                    Err(e) => {
+                        send_error(&tx, format!("Failed to save pending approval: {}", e), ErrorCode::SystemDatabaseError).await;
+                        return;
+                    }
                 }
 
                 // Continue loop - approval will be checked in next iteration
@@ -574,37 +668,22 @@ pub async fn send_message_stream(
         }
 
         if iteration >= MAX_ITERATIONS {
-            send_error(&tx, "Maximum tool call iterations reached".to_string(), ErrorCode::SystemInternalError).await;
-            return;
+            // Send MaxIterationReached event
+            let max_iteration_event = SSEChatStreamEvent::MaxIterationReached(MaxIterationReachedData {
+                iteration: iteration as i32,
+            });
+            let _ = tx.send(Ok(max_iteration_event.into()));
+            // Continue to send Complete event below
         }
 
         // Send complete event
-        if let Some(final_message_id) = last_assistant_message_id {
+        if last_assistant_message_id.is_some() {
             // Register model access for auto-unload tracking
             crate::ai::register_model_access(&request.model_id).await;
 
-            // Query the final message from database to get accurate data
-            match chat::get_message_by_id(final_message_id, auth_user.user.id).await {
-                Ok(Some(message)) => {
-                    let complete_event = SSEChatStreamEvent::Complete(StreamCompleteData {
-                        message_id: message.id.to_string(),
-                        conversation_id: message.conversation_id.to_string(),
-                        role: message.role,
-                        originated_from_id: message.originated_from_id.to_string(),
-                        edit_count: message.edit_count,
-                        created_at: message.created_at.to_rfc3339(),
-                        updated_at: message.updated_at.to_rfc3339(),
-                        total_tokens: None, // TODO: Add token tracking
-                    });
-                    let _ = tx.send(Ok(complete_event.into()));
-                }
-                Ok(None) => {
-                    send_error(&tx, "Final message not found".to_string(), ErrorCode::ResourceNotFound).await;
-                }
-                Err(e) => {
-                    send_error(&tx, format!("Error getting final message: {}", e), ErrorCode::SystemDatabaseError).await;
-                }
-            }
+            // Send Complete event (no data)
+            let complete_event = SSEChatStreamEvent::Complete(CompleteData {});
+            let _ = tx.send(Ok(complete_event.into()));
         }
     });
 
@@ -630,14 +709,8 @@ pub async fn edit_message_stream(
     // Spawn a task to handle the async message editing and AI interaction
     tokio::spawn(async move {
         // Send initial connected event
-        let connected_event = SSEChatStreamEvent::Connected(SSEChatStreamConnectedData {
-            message: Some("Connected to edit stream".to_string()),
-        });
+        let connected_event = SSEChatStreamEvent::Connected(ConnectedData {});
         let _ = tx.send(Ok(connected_event.into()));
-
-        // Send start event
-        let start_event = SSEChatStreamEvent::Start("Edit stream started".to_string());
-        let _ = tx.send(Ok(start_event.into()));
 
         let edit_message = EditMessageRequest {
             content: request.content.clone(),
@@ -726,6 +799,7 @@ async fn generate_and_update_conversation_title(
     conversation_id: Uuid,
     user_id: Uuid,
     model: &crate::database::models::Model,
+    tx: &tokio::sync::mpsc::UnboundedSender<Result<Event, Infallible>>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Get the first user message from the conversation
     let messages = chat::get_conversation_messages(conversation_id, user_id).await?;
@@ -768,7 +842,7 @@ async fn generate_and_update_conversation_title(
 
                 // Update the conversation title
                 let update_request = UpdateConversationRequest {
-                    title: Some(clean_title),
+                    title: Some(clean_title.clone()),
                     assistant_id: None,
                     model_id: None,
                 };
@@ -777,6 +851,12 @@ async fn generate_and_update_conversation_title(
                     chat::update_conversation(conversation_id, update_request, user_id).await
                 {
                     eprintln!("Error updating conversation title: {}", e);
+                } else {
+                    // Send TitleUpdated event
+                    let title_event = SSEChatStreamEvent::TitleUpdated(TitleUpdatedData {
+                        title: clean_title,
+                    });
+                    let _ = tx.send(Ok(title_event.into()));
                 }
             }
             Err(e) => {
@@ -804,15 +884,29 @@ async fn generate_and_update_conversation_title(
 
 /// Execute MCP tool and save result to DB (MOCK EXECUTION FOR NOW)
 async fn execute_tool_and_save_result(
+    pending_approval_content_id: Uuid,
     message_id: Uuid,
     server_id: Uuid,
     tool_name: &str,
     arguments: &serde_json::Value,
     tx: &tokio::sync::mpsc::UnboundedSender<Result<Event, Infallible>>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    // Generate call_id for this tool execution
+    let call_id = Uuid::new_v4().to_string();
+
+    // Send ToolCall event (tool is approved and being executed)
+    let tool_call_event = SSEChatStreamEvent::ToolCall(ToolCallData {
+        message_content_id: pending_approval_content_id,
+        message_id,
+        tool_name: tool_name.to_string(),
+        server_id,
+        arguments: arguments.clone(),
+        call_id: call_id.clone(),
+    });
+    let _ = tx.send(Ok(tool_call_event.into()));
+
     // MOCK EXECUTION - Return mock result
     // TODO: Replace with actual MCP tool execution
-    let call_id = Uuid::new_v4().to_string();
     let mock_result = serde_json::json!({
         "status": "success",
         "message": format!("Mock execution of tool: {}", tool_name),
@@ -830,14 +924,23 @@ async fn execute_tool_and_save_result(
         error_message: None,
     };
 
-    // Save to database using query function
-    chat::save_tool_result_content(message_id, result_content).await?;
+    // Save to database using query function and get the content_id
+    let message_content_id = chat::save_tool_result_content(message_id, result_content).await?;
 
-    // Send SSE event
-    let event = SSEChatStreamEvent::ToolCallComplete(ToolCallCompleteData {
+    // Send NewMessageContent event
+    let new_content_event = SSEChatStreamEvent::NewMessageContent(NewMessageContentData {
+        message_content_id,
+        message_id,
+    });
+    let _ = tx.send(Ok(new_content_event.into()));
+
+    // Send ToolResult event
+    let event = SSEChatStreamEvent::ToolResult(ToolResultData {
+        message_content_id,
+        message_id,
         call_id,
+        result: mock_result,
         success: true,
-        result: Some(mock_result),
         error_message: None,
     });
     let _ = tx.send(Ok(event.into()));

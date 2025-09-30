@@ -75,6 +75,7 @@ struct AnthropicDelta {
     #[serde(rename = "type")]
     delta_type: String,
     text: Option<String>,
+    partial_json: Option<String>,
     stop_reason: Option<String>,
 }
 
@@ -535,6 +536,7 @@ impl AIProvider for AnthropicProvider {
         // This will be fixed when we integrate with the chat handler
         let processed_request = request;
         let body = self.prepare_request(&processed_request).await?;
+        // println!("DEBUG Anthropic request body: {}", serde_json::to_string_pretty(&body).unwrap_or_default());
 
         let response = self
             .client
@@ -557,6 +559,7 @@ impl AIProvider for AnthropicProvider {
         // Use a shared buffer to handle partial SSE chunks
         let buffer = Arc::new(Mutex::new(String::new()));
         let current_tool_use = Arc::new(Mutex::new(None::<crate::ai::core::providers::ToolUse>));
+        let tool_input_buffer = Arc::new(Mutex::new(String::new()));
 
         let stream = response.bytes_stream().map(move |result| {
             result.map_err(|e| e.into()).and_then(|bytes| {
@@ -566,6 +569,7 @@ impl AIProvider for AnthropicProvider {
                 buffer_guard.push_str(&text);
 
                 let mut chunks = Vec::new();
+                let tool_input_buffer_clone = tool_input_buffer.clone();
 
                 // Process complete lines from buffer
                 while let Some(line_end) = buffer_guard.find('\n') {
@@ -574,6 +578,7 @@ impl AIProvider for AnthropicProvider {
 
                     if line.starts_with("data: ") {
                         let json_str = line.strip_prefix("data: ").unwrap_or("");
+                        // println!("DEBUG Anthropic SSE data: {}", json_str);
 
                         if let Ok(chunk) = serde_json::from_str::<AnthropicStreamResponse>(json_str)
                         {
@@ -592,7 +597,10 @@ impl AIProvider for AnthropicProvider {
                                                 }
                                             }
                                             "tool_use" => {
-                                                // Start collecting tool use
+                                                // Start collecting tool use - clear the input buffer
+                                                let mut input_buffer = tool_input_buffer_clone.lock().unwrap();
+                                                input_buffer.clear();
+
                                                 let mut tool_guard = current_tool_use.lock().unwrap();
                                                 *tool_guard = Some(crate::ai::core::providers::ToolUse {
                                                     id: content_block.id.unwrap_or_default(),
@@ -614,13 +622,34 @@ impl AIProvider for AnthropicProvider {
                                                     tool_use: None,
                                                 });
                                             }
+                                        } else if delta.delta_type == "input_json_delta" {
+                                            // Accumulate partial JSON for tool input
+                                            if let Some(partial_json) = delta.partial_json {
+                                                let mut input_buffer = tool_input_buffer_clone.lock().unwrap();
+                                                input_buffer.push_str(&partial_json);
+                                            }
                                         }
                                     }
                                 }
                                 "content_block_stop" => {
-                                    // Send tool use if we have one
+                                    // Parse accumulated tool input JSON and send tool use
                                     let mut tool_guard = current_tool_use.lock().unwrap();
-                                    if let Some(tool_use) = tool_guard.take() {
+                                    if let Some(mut tool_use) = tool_guard.take() {
+                                        // Get accumulated JSON from buffer
+                                        let input_buffer = tool_input_buffer_clone.lock().unwrap();
+                                        if !input_buffer.is_empty() {
+                                            // Try to parse the accumulated JSON
+                                            match serde_json::from_str::<serde_json::Value>(&input_buffer) {
+                                                Ok(parsed_input) => {
+                                                    tool_use.input = parsed_input;
+                                                }
+                                                Err(e) => {
+                                                    eprintln!("Failed to parse tool input JSON: {}", e);
+                                                    eprintln!("Raw JSON: {}", &*input_buffer);
+                                                }
+                                            }
+                                        }
+
                                         chunks.push(StreamingChunk {
                                             content: None,
                                             finish_reason: None,
@@ -642,13 +671,15 @@ impl AIProvider for AnthropicProvider {
                     }
                 }
 
-                // Return the first chunk if we have any, otherwise return empty
-                Ok(chunks.into_iter().next().unwrap_or(StreamingChunk {
-                    content: None,
-                    finish_reason: None,
-                    tool_use: None,
-                }))
+                // Return all chunks
+                Ok(chunks)
             })
+        })
+        .flat_map(|result| {
+            match result {
+                Ok(chunks) => futures_util::stream::iter(chunks.into_iter().map(Ok)).boxed(),
+                Err(e) => futures_util::stream::once(async move { Err(e) }).boxed(),
+            }
         });
 
         Ok(Box::pin(stream))

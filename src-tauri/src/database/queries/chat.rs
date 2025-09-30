@@ -580,70 +580,6 @@ pub async fn save_message(
     })
 }
 
-/// Get a single message by ID
-pub async fn get_message_by_id(
-    message_id: Uuid,
-    user_id: Uuid,
-) -> Result<Option<Message>, Error> {
-    let pool = get_database_pool()?;
-    let pool = pool.as_ref();
-
-    // Get the message row
-    let message_row = sqlx::query_as!(
-        MessageRow,
-        r#"
-        SELECT
-            m.id, m.conversation_id, m.role,
-            m.originated_from_id, m.edit_count,
-            m.created_at, m.updated_at,
-            '{}'::jsonb as metadata
-        FROM messages m
-        INNER JOIN conversations c ON c.id = m.conversation_id
-        WHERE m.id = $1 AND c.user_id = $2
-        "#,
-        message_id,
-        user_id
-    )
-    .fetch_optional(pool)
-    .await?;
-
-    let message_row = match message_row {
-        Some(row) => row,
-        None => return Ok(None),
-    };
-
-    // Load files and contents
-    let message_ids = vec![message_id];
-    let files_by_message = load_files_for_messages(pool, &message_ids).await?;
-    let contents_by_message = load_message_contents(pool, &message_ids).await?;
-
-    let files = files_by_message
-        .get(&message_row.id)
-        .cloned()
-        .unwrap_or_default()
-        .into();
-    let contents = contents_by_message
-        .get(&message_row.id)
-        .cloned()
-        .unwrap_or_default();
-
-    let metadata: JsonOption<Vec<crate::database::models::chat::MessageMetadata>> =
-        serde_json::from_value(message_row.metadata).unwrap_or_default();
-
-    Ok(Some(Message {
-        id: message_row.id,
-        conversation_id: message_row.conversation_id,
-        role: message_row.role,
-        originated_from_id: message_row.originated_from_id,
-        edit_count: message_row.edit_count,
-        created_at: message_row.created_at,
-        updated_at: message_row.updated_at,
-        metadata,
-        files,
-        contents,
-    }))
-}
-
 /// Get messages for a conversation's active branch
 /// According to CLAUDE.md: Messages belong to branches, not conversations
 pub async fn get_conversation_messages(
@@ -1369,7 +1305,7 @@ pub async fn check_tool_approval(
 pub async fn save_tool_result_content(
     message_id: Uuid,
     result_content: MessageContentData,
-) -> Result<(), Error> {
+) -> Result<Uuid, Error> {
     let pool = get_database_pool().map_err(|e| Error::Configuration(e.into()))?;
 
     // Get current max sequence order for this message
@@ -1402,14 +1338,14 @@ pub async fn save_tool_result_content(
     .execute(pool.as_ref())
     .await?;
 
-    Ok(())
+    Ok(content_id)
 }
 
 /// Save pending tool approval content to message_contents table
 pub async fn save_pending_tool_approval_content(
     message_id: Uuid,
     pending_content: MessageContentData,
-) -> Result<(), Error> {
+) -> Result<Uuid, Error> {
     let pool = get_database_pool().map_err(|e| Error::Configuration(e.into()))?;
 
     // Get current max sequence order for this message
@@ -1442,7 +1378,7 @@ pub async fn save_pending_tool_approval_content(
     .execute(pool.as_ref())
     .await?;
 
-    Ok(())
+    Ok(content_id)
 }
 
 /// Append text content to an existing message

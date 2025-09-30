@@ -116,6 +116,14 @@ export const updateExistingConversation = async (
   }
 }
 
+export const updateConversationTitle = (id: string, title: string): void => {
+  useConversationsStore.setState(state => ({
+    conversations: state.conversations.map(conv =>
+      conv.id === id ? { ...conv, title } : conv,
+    ),
+  }))
+}
+
 export const removeConversationFromList = async (id: string): Promise<void> => {
   const state = useConversationsStore.getState()
   if (state.deleting) {

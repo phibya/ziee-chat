@@ -118,8 +118,13 @@ export interface ChatMessageRequest {
   conversation_id: string
   enabled_tools?: EnabledMCPTool[]
   file_ids?: string[]
+  message_id?: string
   model_id: string
 }
+
+export type CompleteData = any
+
+export type ConnectedData = any
 
 export interface Conversation {
   title: string
@@ -837,6 +842,10 @@ export interface MCPToolWithServer {
 
 export type MCPTransportType = 'stdio' | 'http' | 'sse'
 
+export interface MaxIterationReachedData {
+  iteration: number
+}
+
 export interface MemoryInfo {
   total_ram: number
   total_swap?: number
@@ -868,6 +877,11 @@ export interface MessageBranch {
   created_at: string
   id: string
   is_clone: boolean
+}
+
+export interface MessageContentChunkData {
+  delta: string
+  message_content_id: string
 }
 
 export interface MessageContentDataText {
@@ -1023,6 +1037,19 @@ export interface ModelParameters {
   temperature?: number
   top_k?: number
   top_p?: number
+}
+
+export interface NewAssistantMessageData {
+  message_id: string
+}
+
+export interface NewMessageContentData {
+  message_content_id: string
+  message_id: string
+}
+
+export interface NewUserMessageData {
+  message_id: string
 }
 
 export interface NgrokSettingsResponse {
@@ -1518,20 +1545,21 @@ export interface ResetPasswordRequest {
   user_id: string
 }
 
-export interface SSEChatStreamConnectedData {
-  message?: string
-}
-
 export type SSEChatStreamEvent = {
-  connected: SSEChatStreamConnectedData
-  start: string
-  chunk: StreamChunkData
-  complete: StreamCompleteData
+  connected: ConnectedData
+  newUserMessage: NewUserMessageData
+  newAssistantMessage: NewAssistantMessageData
+  newMessageContent: NewMessageContentData
+  messageContentChunk: MessageContentChunkData
+  toolCall: ToolCallData
+  toolCallPendingApproval: ToolCallPendingApprovalData
+  toolResult: ToolResultData
+  titleUpdated: TitleUpdatedData
+  maxIterationReached: MaxIterationReachedData
+  complete: CompleteData
   error: StreamErrorData
   editedMessage: Message
   createdBranch: MessageBranch
-  toolCallPendingApproval: ToolCallPendingApprovalData
-  toolCallComplete: ToolCallCompleteData
 }
 
 export interface SSEDownloadProgressConnectedData {
@@ -1645,22 +1673,6 @@ export interface SourceInfo {
   id?: string
 }
 
-export interface StreamChunkData {
-  delta: string
-  message_id?: string
-}
-
-export interface StreamCompleteData {
-  conversation_id: string
-  created_at: string
-  edit_count: number
-  message_id: string
-  originated_from_id: string
-  role: string
-  total_tokens?: number
-  updated_at: string
-}
-
 export interface StreamErrorData {
   code: string
   error: string
@@ -1696,6 +1708,10 @@ export interface TestRepositoryConnectionResponse {
   success: boolean
 }
 
+export interface TitleUpdatedData {
+  title: string
+}
+
 export interface ToolApprovalResponse {
   approved: boolean
   approved_at?: string
@@ -1714,16 +1730,18 @@ export interface ToolApprovalResponse {
   user_id: string
 }
 
-export interface ToolCallCompleteData {
+export interface ToolCallData {
+  arguments: any
   call_id: string
-  error_message?: string
-  result?: any
-  success: boolean
+  message_content_id: string
+  message_id: string
+  server_id: string
+  tool_name: string
 }
 
 export interface ToolCallPendingApprovalData {
-  description?: string
   arguments: any
+  message_content_id: string
   message_id: string
   server_id: string
   tool_name: string
@@ -1735,6 +1753,15 @@ export interface ToolExecutionResponse {
   execution_id: string
   result?: any
   status: MCPExecutionStatus
+}
+
+export interface ToolResultData {
+  call_id: string
+  error_message?: string
+  message_content_id: string
+  message_id: string
+  result: any
+  success: boolean
 }
 
 export interface UpdateApiProxyServerModelRequest {

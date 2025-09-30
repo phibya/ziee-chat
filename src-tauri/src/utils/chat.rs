@@ -11,10 +11,7 @@
 
 use uuid::Uuid;
 
-use crate::ai::{
-    core::{ChatMessage, ContentPart, MessageContent},
-    file_helpers::load_file_reference,
-};
+use crate::ai::core::{ChatMessage, ContentPart, MessageContent};
 use crate::api::chat::ChatMessageRequest;
 use crate::database::models::MessageContentData;
 use crate::database::queries::{
@@ -85,46 +82,7 @@ pub async fn build_chat_messages(
         }
     }
 
-    // Add the current user's message with potential file references
-    let user_message_content =
-        build_user_message_content(request.content.clone(), request.file_ids.clone()).await?;
-    messages.push(ChatMessage {
-        role: "user".to_string(),
-        content: user_message_content,
-    });
-
     Ok(messages)
-}
-
-/// Build MessageContent for user messages, handling text + file attachments
-pub async fn build_user_message_content(
-    text_content: String,
-    file_ids: Option<Vec<Uuid>>,
-) -> Result<MessageContent, Box<dyn std::error::Error + Send + Sync>> {
-    if let Some(file_ids) = &file_ids {
-        if file_ids.is_empty() {
-            return Ok(MessageContent::Text(text_content));
-        }
-
-        let mut parts = vec![ContentPart::Text(text_content)];
-
-        // Load file references
-        for file_id in file_ids {
-            match load_file_reference(*file_id).await {
-                Ok(file_ref) => {
-                    parts.push(ContentPart::FileReference(file_ref));
-                }
-                Err(e) => {
-                    eprintln!("Warning: Failed to load file reference {}: {}", file_id, e);
-                    // Continue without this file rather than failing completely
-                }
-            }
-        }
-
-        Ok(MessageContent::Multimodal(parts))
-    } else {
-        Ok(MessageContent::Text(text_content))
-    }
 }
 
 /// Create a single user message (useful for simple requests like title generation)

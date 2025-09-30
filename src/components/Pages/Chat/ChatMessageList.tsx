@@ -20,7 +20,7 @@ const createTextContent = (text: string) => [
 const { Text } = Typography
 
 export const ChatMessageList = memo(function ChatMessageList() {
-  const { messages, sending, isStreaming, streamingMessage, error, loading } =
+  const { messages, error, loading } =
     useChatStore()
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -43,23 +43,6 @@ export const ChatMessageList = memo(function ChatMessageList() {
         <ChatMessage key={msg.id} message={msg} />
       ))}
 
-      {(sending || isStreaming) && (
-        <ChatMessage
-          message={{
-            id: 'streaming-temp',
-            conversation_id: '',
-            contents: createTextContent(
-              isStreaming && streamingMessage ? streamingMessage : '',
-            ).map(c => ({ ...c, message_id: 'streaming-temp' })),
-            role: 'assistant',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            edit_count: 0,
-            originated_from_id: 'streaming-temp',
-            files: [],
-          }}
-        />
-      )}
       {error && (
         <ChatMessage
           message={{

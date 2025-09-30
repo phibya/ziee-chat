@@ -6,8 +6,19 @@ import {
   Message,
   MessageBranch,
   MessageContentDataText,
+  MessageContentDataToolCall,
+  MessageContentDataToolCallPendingApproval,
+  MessageContentDataToolResult,
+  MessageContentItem,
+  ConnectedData,
+  CompleteData,
+  MessageContentChunkData,
+  ToolCallData,
+  ToolCallPendingApprovalData,
+  ToolResultData,
+  TitleUpdatedData,
 } from '../types'
-import { useConversationsStore } from './conversations.ts'
+import { useConversationsStore, updateConversationTitle } from './conversations.ts'
 import { getFile } from './files.ts'
 import { createStoreProxy } from '../utils/createStoreProxy.ts'
 import { StoreApi, UseBoundStore } from 'zustand/index'
@@ -88,7 +99,6 @@ export interface ChatState {
   error: string | null
 
   // Stream state
-  streamingMessage: string
   isStreaming: boolean
 
   // Store management
@@ -145,7 +155,6 @@ export const createChatStore = (conversation: string | Conversation) => {
         sending: false,
         loadingBranches: false,
         error: null,
-        streamingMessage: '',
         isStreaming: false,
 
         destroy: () => {
@@ -291,7 +300,6 @@ export const createChatStore = (conversation: string | Conversation) => {
               sending: true,
               error: null,
               isStreaming: true,
-              streamingMessage: '',
             })
 
             const files = await Promise.all((params.fileIds || []).map(getFile))
@@ -350,6 +358,9 @@ export const createChatStore = (conversation: string | Conversation) => {
               return { messages: newMessages }
             })
 
+            // Track actual message ID from server
+            let actualAssistantMessageId: string | null = null
+
             // Send message with streaming
             await ApiClient.Chat.sendMessageStream(
               {
@@ -362,35 +373,163 @@ export const createChatStore = (conversation: string | Conversation) => {
               },
               {
                 SSE: {
-                  connected: data => {
-                    console.log(
-                      'Chat stream connected:',
-                      data?.message || 'Connected',
-                    )
+                  connected: (_data: ConnectedData) => {
+                    console.log('Chat stream connected')
                   },
-                  start: data => {
-                    console.log('Chat stream started:', data)
+                  newAssistantMessage: (data) => {
+                    // Server has created the assistant message, track the ID
+                    actualAssistantMessageId = data.message_id
                   },
-                  chunk: data => {
-                    // Handle streaming data events
+                  messageContentChunk: (data: MessageContentChunkData) => {
+                    // Append delta directly to the assistant message
                     if (data.delta) {
-                      set(state => ({
-                        streamingMessage: state.streamingMessage + data.delta,
-                      }))
+                      set(state => {
+                        const updatedMessages = state.messages.map(msg => {
+                          if (msg.id === assistantMessage.id) {
+                            // Find the text content and append delta
+                            const textContent = msg.contents.find(c => c.content_type === 'text')
+                            if (textContent) {
+                              const updatedContents = msg.contents.map(c => {
+                                if (c.content_type === 'text') {
+                                  return {
+                                    ...c,
+                                    content: {
+                                      ...c.content,
+                                      text: (c.content as MessageContentDataText).text + data.delta,
+                                    },
+                                  }
+                                }
+                                return c
+                              })
+                              return { ...msg, contents: updatedContents }
+                            }
+                          }
+                          return msg
+                        })
+                        return { messages: updatedMessages }
+                      })
                     }
                   },
-                  complete: data => {
-                    // Handle completion events
+                  toolCall: (data: ToolCallData) => {
+                    // Add tool call content to the assistant message
                     set(state => {
-                      const finalMessage = {
-                        ...assistantMessage,
-                        contents: createTextContent(state.streamingMessage).map(
-                          c => ({ ...c, message_id: data.message_id }),
-                        ),
-                        updated_at: new Date().toISOString(),
-                        id: data.message_id,
+                      const updatedMessages = state.messages.map(msg => {
+                        if (msg.id === assistantMessage.id) {
+                          const newContent: MessageContentItem = {
+                            id: data.message_content_id,
+                            message_id: data.message_id,
+                            content_type: 'tool_call',
+                            content: {
+                              call_id: data.call_id,
+                              tool_name: data.tool_name,
+                              server_id: data.server_id,
+                              arguments: data.arguments,
+                            } as MessageContentDataToolCall,
+                            sequence_order: msg.contents.length,
+                            created_at: new Date().toISOString(),
+                            updated_at: new Date().toISOString(),
+                          }
+                          return {
+                            ...msg,
+                            contents: [...msg.contents, newContent],
+                          }
+                        }
+                        return msg
+                      })
+                      return { messages: updatedMessages }
+                    })
+                  },
+                  toolCallPendingApproval: (data: ToolCallPendingApprovalData) => {
+                    // Add tool call pending approval content to the assistant message
+                    set(state => {
+                      const updatedMessages = state.messages.map(msg => {
+                        if (msg.id === assistantMessage.id) {
+                          const newContent: MessageContentItem = {
+                            id: data.message_content_id,
+                            message_id: data.message_id,
+                            content_type: 'tool_call_pending_approval',
+                            content: {
+                              tool_name: data.tool_name,
+                              server_id: data.server_id,
+                              arguments: data.arguments,
+                            } as MessageContentDataToolCallPendingApproval,
+                            sequence_order: msg.contents.length,
+                            created_at: new Date().toISOString(),
+                            updated_at: new Date().toISOString(),
+                          }
+                          return {
+                            ...msg,
+                            contents: [...msg.contents, newContent],
+                          }
+                        }
+                        return msg
+                      })
+                      return { messages: updatedMessages }
+                    })
+                  },
+                  toolResult: (data: ToolResultData) => {
+                    // Add tool result content to the assistant message
+                    set(state => {
+                      const updatedMessages = state.messages.map(msg => {
+                        if (msg.id === assistantMessage.id) {
+                          const newContent: MessageContentItem = {
+                            id: data.message_content_id,
+                            message_id: data.message_id,
+                            content_type: 'tool_result',
+                            content: {
+                              call_id: data.call_id,
+                              result: data.result,
+                              success: data.success,
+                              error_message: data.error_message,
+                            } as MessageContentDataToolResult,
+                            sequence_order: msg.contents.length,
+                            created_at: new Date().toISOString(),
+                            updated_at: new Date().toISOString(),
+                          }
+                          return {
+                            ...msg,
+                            contents: [...msg.contents, newContent],
+                          }
+                        }
+                        return msg
+                      })
+                      return { messages: updatedMessages }
+                    })
+                  },
+                  titleUpdated: (data: TitleUpdatedData) => {
+                    // Update conversation title in the chat store
+                    set(state => {
+                      if (state.conversation) {
+                        return {
+                          conversation: {
+                            ...state.conversation,
+                            title: data.title,
+                          },
+                        }
                       }
-                      const newMessages = [...state.messages, finalMessage]
+                      return {}
+                    })
+
+                    // Also update in conversations list
+                    updateConversationTitle(conversationId, data.title)
+                  },
+                  complete: (_data: CompleteData) => {
+                    // Handle completion events - update with actual message ID from server
+                    set(state => {
+                      const updatedMessages: Message[] = state.messages.map(msg => {
+                        if (msg.id === assistantMessage.id && actualAssistantMessageId) {
+                          return {
+                            ...msg,
+                            id: actualAssistantMessageId,
+                            contents: msg.contents.map(c => ({
+                              ...c,
+                              message_id: actualAssistantMessageId,
+                            })),
+                          } as Message
+                        }
+                        return msg
+                      })
+                      const newMessages = updatedMessages
 
                       // Update cache when streaming is complete
                       if (activeBranchId) {
@@ -401,7 +540,6 @@ export const createChatStore = (conversation: string | Conversation) => {
                       return {
                         isStreaming: false,
                         sending: false,
-                        streamingMessage: '',
                         messages: newMessages,
                       }
                     })
@@ -411,7 +549,6 @@ export const createChatStore = (conversation: string | Conversation) => {
                       error: data.error,
                       sending: false,
                       isStreaming: false,
-                      streamingMessage: '',
                     })
                     console.error('Streaming error:', data)
                   },
@@ -429,7 +566,6 @@ export const createChatStore = (conversation: string | Conversation) => {
                   : 'Failed to send message',
               sending: false,
               isStreaming: false,
-              streamingMessage: '',
             })
             throw error
           }
@@ -447,7 +583,6 @@ export const createChatStore = (conversation: string | Conversation) => {
               sending: true,
               error: null,
               isStreaming: true,
-              streamingMessage: '',
             })
 
             const currentMessage = get().messages.find(
@@ -503,6 +638,9 @@ export const createChatStore = (conversation: string | Conversation) => {
               messages: [...state.messages, assistantMessage],
             }))
 
+            // Track actual message ID from server
+            let actualAssistantMessageId: string | null = null
+
             // Use streaming edit endpoint
             await ApiClient.Chat.editMessageStream(
               {
@@ -516,16 +654,14 @@ export const createChatStore = (conversation: string | Conversation) => {
               },
               {
                 SSE: {
-                  connected: data => {
-                    console.log(
-                      'Chat edit stream connected:',
-                      data?.message || 'Connected',
-                    )
+                  connected: (_data: ConnectedData) => {
+                    console.log('Chat edit stream connected')
                   },
-                  start: data => {
-                    console.log('Chat edit stream started:', data)
+                  newAssistantMessage: (data) => {
+                    // Server has created the assistant message, track the ID
+                    actualAssistantMessageId = data.message_id
                   },
-                  editedMessage: data => {
+                  editedMessage: (data) => {
                     let editedMessage = data as Message
                     // find the message.id === messageId and replace it with editedMessage
                     set(state => ({
@@ -537,48 +673,174 @@ export const createChatStore = (conversation: string | Conversation) => {
                       editedMessage.originated_from_id,
                     )
                   },
-                  createdBranch: data => {
+                  createdBranch: (data) => {
                     // Handle branch creation events
                     const newBranch = data as MessageBranch
                     set({
                       activeBranchId: newBranch.id,
                     })
                   },
-                  chunk: data => {
-                    // Handle streaming data events
+                  messageContentChunk: (data: MessageContentChunkData) => {
+                    // Append delta directly to the streaming-temp assistant message
                     if (data.delta) {
-                      set(state => ({
-                        streamingMessage: state.streamingMessage + data.delta,
-                      }))
+                      set(state => {
+                        const updatedMessages = state.messages.map(msg => {
+                          if (msg.id === 'streaming-temp') {
+                            const textContent = msg.contents.find(c => c.content_type === 'text')
+                            if (textContent) {
+                              const updatedContents = msg.contents.map(c => {
+                                if (c.content_type === 'text') {
+                                  return {
+                                    ...c,
+                                    content: {
+                                      ...c.content,
+                                      text: (c.content as MessageContentDataText).text + data.delta,
+                                    },
+                                  }
+                                }
+                                return c
+                              })
+                              return { ...msg, contents: updatedContents }
+                            }
+                          }
+                          return msg
+                        })
+                        return { messages: updatedMessages }
+                      })
                     }
                   },
-                  complete: data => {
-                    // Handle completion events
-                    set(state => ({
-                      isStreaming: false,
-                      sending: false,
-                      streamingMessage: '',
-                      messages: [
-                        ...state.messages.filter(
-                          (msg: Message) => msg.id !== 'streaming-temp',
-                        ),
-                        {
-                          ...assistantMessage,
-                          contents: createTextContent(
-                            state.streamingMessage,
-                          ).map(c => ({ ...c, message_id: data.message_id })),
-                          updated_at: new Date().toISOString(),
-                          id: data.message_id,
-                        },
-                      ],
-                    }))
+                  toolCall: (data: ToolCallData) => {
+                    // Add tool call content to the streaming-temp assistant message
+                    set(state => {
+                      const updatedMessages = state.messages.map(msg => {
+                        if (msg.id === 'streaming-temp') {
+                          const newContent: MessageContentItem = {
+                            id: data.message_content_id,
+                            message_id: data.message_id,
+                            content_type: 'tool_call',
+                            content: {
+                              call_id: data.call_id,
+                              tool_name: data.tool_name,
+                              server_id: data.server_id,
+                              arguments: data.arguments,
+                            } as MessageContentDataToolCall,
+                            sequence_order: msg.contents.length,
+                            created_at: new Date().toISOString(),
+                            updated_at: new Date().toISOString(),
+                          }
+                          return {
+                            ...msg,
+                            contents: [...msg.contents, newContent],
+                          }
+                        }
+                        return msg
+                      })
+                      return { messages: updatedMessages }
+                    })
+                  },
+                  toolCallPendingApproval: (data: ToolCallPendingApprovalData) => {
+                    // Add tool call pending approval content to the streaming-temp assistant message
+                    set(state => {
+                      const updatedMessages = state.messages.map(msg => {
+                        if (msg.id === 'streaming-temp') {
+                          const newContent: MessageContentItem = {
+                            id: data.message_content_id,
+                            message_id: data.message_id,
+                            content_type: 'tool_call_pending_approval',
+                            content: {
+                              tool_name: data.tool_name,
+                              server_id: data.server_id,
+                              arguments: data.arguments,
+                            } as MessageContentDataToolCallPendingApproval,
+                            sequence_order: msg.contents.length,
+                            created_at: new Date().toISOString(),
+                            updated_at: new Date().toISOString(),
+                          }
+                          return {
+                            ...msg,
+                            contents: [...msg.contents, newContent],
+                          }
+                        }
+                        return msg
+                      })
+                      return { messages: updatedMessages }
+                    })
+                  },
+                  toolResult: (data: ToolResultData) => {
+                    // Add tool result content to the streaming-temp assistant message
+                    set(state => {
+                      const updatedMessages = state.messages.map(msg => {
+                        if (msg.id === 'streaming-temp') {
+                          const newContent: MessageContentItem = {
+                            id: data.message_content_id,
+                            message_id: data.message_id,
+                            content_type: 'tool_result',
+                            content: {
+                              call_id: data.call_id,
+                              result: data.result,
+                              success: data.success,
+                              error_message: data.error_message,
+                            } as MessageContentDataToolResult,
+                            sequence_order: msg.contents.length,
+                            created_at: new Date().toISOString(),
+                            updated_at: new Date().toISOString(),
+                          }
+                          return {
+                            ...msg,
+                            contents: [...msg.contents, newContent],
+                          }
+                        }
+                        return msg
+                      })
+                      return { messages: updatedMessages }
+                    })
+                  },
+                  titleUpdated: (data: TitleUpdatedData) => {
+                    // Update conversation title in the chat store
+                    set(state => {
+                      if (state.conversation) {
+                        return {
+                          conversation: {
+                            ...state.conversation,
+                            title: data.title,
+                          },
+                        }
+                      }
+                      return {}
+                    })
+
+                    // Also update in conversations list
+                    updateConversationTitle(conversationId, data.title)
+                  },
+                  complete: (_data: CompleteData) => {
+                    // Handle completion events - replace streaming-temp with actual message
+                    set(state => {
+                      const streamingMsg = state.messages.find(msg => msg.id === 'streaming-temp')
+                      const finalMessage = streamingMsg ? {
+                        ...streamingMsg,
+                        id: actualAssistantMessageId || assistantMessage.id,
+                        contents: streamingMsg.contents.map(c => ({
+                          ...c,
+                          message_id: actualAssistantMessageId || assistantMessage.id,
+                        })),
+                        updated_at: new Date().toISOString(),
+                      } : assistantMessage
+
+                      return {
+                        isStreaming: false,
+                        sending: false,
+                        messages: [
+                          ...state.messages.filter(msg => msg.id !== 'streaming-temp'),
+                          finalMessage,
+                        ],
+                      }
+                    })
                   },
                   error: _data => {
                     set({
                       error: 'Edit streaming failed',
                       sending: false,
                       isStreaming: false,
-                      streamingMessage: '',
                       // Remove the streaming placeholder
                       messages: get().messages.filter(
                         (msg: Message) => msg.id !== 'streaming-temp',
@@ -603,7 +865,6 @@ export const createChatStore = (conversation: string | Conversation) => {
                   : 'Failed to edit message',
               sending: false,
               isStreaming: false,
-              streamingMessage: '',
               // Remove the streaming placeholder on error
               messages: get().messages.filter(
                 (msg: Message) => msg.id !== 'streaming-temp',
@@ -668,7 +929,6 @@ export const createChatStore = (conversation: string | Conversation) => {
             sending: false,
             loadingBranches: false,
             error: null,
-            streamingMessage: '',
             isStreaming: false,
           })
         },

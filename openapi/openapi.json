@@ -6170,6 +6170,13 @@
               "format": "uuid"
             }
           },
+          "message_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
           "model_id": {
             "type": "string",
             "format": "uuid"
@@ -6181,6 +6188,12 @@
           "model_id",
           "assistant_id"
         ]
+      },
+      "CompleteData": {
+        "type": "object"
+      },
+      "ConnectedData": {
+        "type": "object"
       },
       "Conversation": {
         "type": "object",
@@ -9605,6 +9618,18 @@
           "sse"
         ]
       },
+      "MaxIterationReachedData": {
+        "type": "object",
+        "properties": {
+          "iteration": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "required": [
+          "iteration"
+        ]
+      },
       "MemoryInfo": {
         "type": "object",
         "properties": {
@@ -9748,6 +9773,22 @@
           "is_clone"
         ]
       },
+      "MessageContentChunkData": {
+        "type": "object",
+        "properties": {
+          "delta": {
+            "type": "string"
+          },
+          "message_content_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "message_content_id",
+          "delta"
+        ]
+      },
       "MessageContentData": {
         "oneOf": [
           {
@@ -9791,6 +9832,50 @@
               "server_id",
               "arguments",
               "call_id"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "tool_call_pending_approval"
+              },
+              "arguments": true,
+              "server_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "tool_name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "tool_name",
+              "server_id",
+              "arguments"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "tool_call_pending_approval_cancel"
+              },
+              "server_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "tool_name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "tool_name",
+              "server_id"
             ]
           },
           {
@@ -9916,6 +10001,8 @@
         "enum": [
           "text",
           "tool_call",
+          "tool_call_pending_approval",
+          "tool_call_pending_approval_cancel",
           "tool_result",
           "file_attachment",
           "error"
@@ -10579,6 +10666,47 @@
             "format": "float"
           }
         }
+      },
+      "NewAssistantMessageData": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "message_id"
+        ]
+      },
+      "NewMessageContentData": {
+        "type": "object",
+        "properties": {
+          "message_content_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "message_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "message_content_id",
+          "message_id"
+        ]
+      },
+      "NewUserMessageData": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "message_id"
+        ]
       },
       "NgrokSettingsResponse": {
         "type": "object",
@@ -12338,24 +12466,13 @@
           "new_password"
         ]
       },
-      "SSEChatStreamConnectedData": {
-        "type": "object",
-        "properties": {
-          "message": {
-            "type": [
-              "string",
-              "null"
-            ]
-          }
-        }
-      },
       "SSEChatStreamEvent": {
         "oneOf": [
           {
             "type": "object",
             "properties": {
               "connected": {
-                "$ref": "#/components/schemas/SSEChatStreamConnectedData"
+                "$ref": "#/components/schemas/ConnectedData"
               }
             },
             "additionalProperties": false,
@@ -12366,32 +12483,116 @@
           {
             "type": "object",
             "properties": {
-              "start": {
-                "type": "string"
+              "newUserMessage": {
+                "$ref": "#/components/schemas/NewUserMessageData"
               }
             },
             "additionalProperties": false,
             "required": [
-              "start"
+              "newUserMessage"
             ]
           },
           {
             "type": "object",
             "properties": {
-              "chunk": {
-                "$ref": "#/components/schemas/StreamChunkData"
+              "newAssistantMessage": {
+                "$ref": "#/components/schemas/NewAssistantMessageData"
               }
             },
             "additionalProperties": false,
             "required": [
-              "chunk"
+              "newAssistantMessage"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "newMessageContent": {
+                "$ref": "#/components/schemas/NewMessageContentData"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "newMessageContent"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "messageContentChunk": {
+                "$ref": "#/components/schemas/MessageContentChunkData"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "messageContentChunk"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "toolCall": {
+                "$ref": "#/components/schemas/ToolCallData"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "toolCall"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "toolCallPendingApproval": {
+                "$ref": "#/components/schemas/ToolCallPendingApprovalData"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "toolCallPendingApproval"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "toolResult": {
+                "$ref": "#/components/schemas/ToolResultData"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "toolResult"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "titleUpdated": {
+                "$ref": "#/components/schemas/TitleUpdatedData"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "titleUpdated"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "maxIterationReached": {
+                "$ref": "#/components/schemas/MaxIterationReachedData"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "maxIterationReached"
             ]
           },
           {
             "type": "object",
             "properties": {
               "complete": {
-                "$ref": "#/components/schemas/StreamCompleteData"
+                "$ref": "#/components/schemas/CompleteData"
               }
             },
             "additionalProperties": false,
@@ -12939,66 +13140,6 @@
           "type"
         ]
       },
-      "StreamChunkData": {
-        "type": "object",
-        "properties": {
-          "delta": {
-            "type": "string"
-          },
-          "message_id": {
-            "type": [
-              "string",
-              "null"
-            ]
-          }
-        },
-        "required": [
-          "delta"
-        ]
-      },
-      "StreamCompleteData": {
-        "type": "object",
-        "properties": {
-          "conversation_id": {
-            "type": "string"
-          },
-          "created_at": {
-            "type": "string"
-          },
-          "edit_count": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "message_id": {
-            "type": "string"
-          },
-          "originated_from_id": {
-            "type": "string"
-          },
-          "role": {
-            "type": "string"
-          },
-          "total_tokens": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int32"
-          },
-          "updated_at": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "message_id",
-          "conversation_id",
-          "role",
-          "originated_from_id",
-          "edit_count",
-          "created_at",
-          "updated_at"
-        ]
-      },
       "StreamErrorData": {
         "type": "object",
         "properties": {
@@ -13116,6 +13257,17 @@
           "message"
         ]
       },
+      "TitleUpdatedData": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ]
+      },
       "ToolApprovalResponse": {
         "type": "object",
         "properties": {
@@ -13199,6 +13351,66 @@
           "updated_at"
         ]
       },
+      "ToolCallData": {
+        "type": "object",
+        "properties": {
+          "arguments": true,
+          "call_id": {
+            "type": "string"
+          },
+          "message_content_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "message_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "server_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tool_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message_content_id",
+          "message_id",
+          "tool_name",
+          "server_id",
+          "arguments",
+          "call_id"
+        ]
+      },
+      "ToolCallPendingApprovalData": {
+        "type": "object",
+        "properties": {
+          "arguments": true,
+          "message_content_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "message_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "server_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tool_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message_content_id",
+          "message_id",
+          "tool_name",
+          "server_id",
+          "arguments"
+        ]
+      },
       "ToolExecutionResponse": {
         "type": "object",
         "properties": {
@@ -13227,6 +13439,39 @@
         "required": [
           "execution_id",
           "status"
+        ]
+      },
+      "ToolResultData": {
+        "type": "object",
+        "properties": {
+          "call_id": {
+            "type": "string"
+          },
+          "error_message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "message_content_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "message_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "result": true,
+          "success": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "message_content_id",
+          "message_id",
+          "call_id",
+          "result",
+          "success"
         ]
       },
       "UpdateApiProxyServerModelRequest": {
