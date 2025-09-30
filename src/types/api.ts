@@ -879,6 +879,15 @@ export interface MessageContentDataToolCall {
   server_id: string
   tool_name: string
 }
+export interface MessageContentDataToolCallPendingApproval {
+  arguments: any
+  server_id: string
+  tool_name: string
+}
+export interface MessageContentDataToolCallPendingApprovalCancel {
+  server_id: string
+  tool_name: string
+}
 export interface MessageContentDataToolResult {
   call_id: string
   error_message?: string | null
@@ -896,7 +905,7 @@ export interface MessageContentDataError {
   message: string
 }
 
-export type MessageContentData = MessageContentDataText | MessageContentDataToolCall | MessageContentDataToolResult | MessageContentDataFileAttachment | MessageContentDataError
+export type MessageContentData = MessageContentDataText | MessageContentDataToolCall | MessageContentDataToolCallPendingApproval | MessageContentDataToolCallPendingApprovalCancel | MessageContentDataToolResult | MessageContentDataFileAttachment | MessageContentDataError
 
 export interface MessageContentItem {
   content: MessageContentData
@@ -908,7 +917,7 @@ export interface MessageContentItem {
   updated_at: string
 }
 
-export type MessageContentType = 'text' | 'tool_call' | 'tool_result' | 'file_attachment' | 'error'
+export type MessageContentType = 'text' | 'tool_call' | 'tool_call_pending_approval' | 'tool_call_pending_approval_cancel' | 'tool_result' | 'file_attachment' | 'error'
 
 export type MessageFiles = File[]
 
@@ -1521,6 +1530,8 @@ export type SSEChatStreamEvent = {
   error: StreamErrorData
   editedMessage: Message
   createdBranch: MessageBranch
+  toolCallPendingApproval: ToolCallPendingApprovalData
+  toolCallComplete: ToolCallCompleteData
 }
 
 export interface SSEDownloadProgressConnectedData {
@@ -1701,6 +1712,21 @@ export interface ToolApprovalResponse {
   tool_name: string
   updated_at: string
   user_id: string
+}
+
+export interface ToolCallCompleteData {
+  call_id: string
+  error_message?: string
+  result?: any
+  success: boolean
+}
+
+export interface ToolCallPendingApprovalData {
+  description?: string
+  arguments: any
+  message_id: string
+  server_id: string
+  tool_name: string
 }
 
 export interface ToolExecutionResponse {

@@ -101,6 +101,9 @@ impl OpenAIProvider {
                             ContentPart::FileReference(file_ref) => {
                                 format!("[File: {}]", file_ref.filename)
                             }
+                            ContentPart::ToolResult { call_id, output } => {
+                                format!("[Tool Result {}]: {}", call_id, output)
+                            }
                         })
                         .collect();
 

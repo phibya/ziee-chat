@@ -168,6 +168,13 @@ impl LocalProvider {
                         "text": text
                     }));
                 }
+                ContentPart::ToolResult { call_id, output } => {
+                    // Add tool result as text content
+                    content_array.push(json!({
+                        "type": "text",
+                        "text": format!("[Tool Result {}]: {}", call_id, output)
+                    }));
+                }
                 ContentPart::FileReference(file_ref) => {
                     match self
                         .process_file_with_enhanced_support(file_ref, supports_vision)

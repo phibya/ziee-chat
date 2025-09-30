@@ -1,4 +1,4 @@
-use crate::database::macros::{impl_json_option_from, make_transparent};
+use crate::database::macros::{impl_json_option_from, impl_string_to_enum, make_transparent};
 use crate::database::models::File;
 use crate::database::types::JsonOption;
 use chrono::{DateTime, Utc};
@@ -26,7 +26,7 @@ make_transparent!(
 );
 
 // Content type enum for structured message content
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, sqlx::Type)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, sqlx::Type, PartialEq, Eq)]
 #[sqlx(type_name = "varchar")]
 #[sqlx(rename_all = "lowercase")]
 pub enum MessageContentType {
@@ -34,6 +34,10 @@ pub enum MessageContentType {
     Text,
     #[serde(rename = "tool_call")]
     ToolCall,
+    #[serde(rename = "tool_call_pending_approval")]
+    ToolCallPendingApproval,
+    #[serde(rename = "tool_call_pending_approval_cancel")]
+    ToolCallPendingApprovalCancel,
     #[serde(rename = "tool_result")]
     ToolResult,
     #[serde(rename = "file_attachment")]
@@ -55,6 +59,19 @@ pub enum MessageContentData {
         server_id: Uuid,
         arguments: serde_json::Value,
         call_id: String,
+    },
+
+    #[serde(rename = "tool_call_pending_approval")]
+    ToolCallPendingApproval {
+        tool_name: String,
+        server_id: Uuid,
+        arguments: serde_json::Value,
+    },
+
+    #[serde(rename = "tool_call_pending_approval_cancel")]
+    ToolCallPendingApprovalCancel {
+        tool_name: String,
+        server_id: Uuid,
     },
 
     #[serde(rename = "tool_result")]
@@ -85,9 +102,24 @@ impl MessageContentType {
         match self {
             MessageContentType::Text => "text",
             MessageContentType::ToolCall => "tool_call",
+            MessageContentType::ToolCallPendingApproval => "tool_call_pending_approval",
+            MessageContentType::ToolCallPendingApprovalCancel => "tool_call_pending_approval_cancel",
             MessageContentType::ToolResult => "tool_result",
             MessageContentType::FileAttachment => "file_attachment",
             MessageContentType::Error => "error",
+        }
+    }
+
+    pub fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "text" => Some(MessageContentType::Text),
+            "tool_call" => Some(MessageContentType::ToolCall),
+            "tool_call_pending_approval" => Some(MessageContentType::ToolCallPendingApproval),
+            "tool_call_pending_approval_cancel" => Some(MessageContentType::ToolCallPendingApprovalCancel),
+            "tool_result" => Some(MessageContentType::ToolResult),
+            "file_attachment" => Some(MessageContentType::FileAttachment),
+            "error" => Some(MessageContentType::Error),
+            _ => None,
         }
     }
 }
@@ -97,6 +129,9 @@ impl std::fmt::Display for MessageContentType {
         write!(f, "{}", self.as_str())
     }
 }
+
+// Implement string to enum conversion for MessageContentType
+impl_string_to_enum!(MessageContentType);
 
 // Database row struct for message content queries
 #[derive(Debug, Clone, sqlx::FromRow)]
@@ -126,25 +161,96 @@ impl From<MessageContentRow> for MessageContentItem {
     fn from(row: MessageContentRow) -> Self {
         let content = match row.content_type {
             MessageContentType::Text => {
-                if let Some(text) = row.content.get("text").and_then(|v| v.as_str()) {
-                    MessageContentData::Text { text: text.to_string() }
-                } else {
-                    MessageContentData::Text { text: String::new() }
-                }
+                let text = row.content.get("text")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                MessageContentData::Text { text }
             }
             MessageContentType::ToolCall => {
-                // For now, serialize the entire JSON as the content
-                // This will be properly implemented when MCP is added
-                MessageContentData::Text { text: row.content.to_string() }
+                let tool_name = row.content.get("tool_name")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let server_id = row.content.get("server_id")
+                    .and_then(|v| v.as_str())
+                    .and_then(|s| Uuid::parse_str(s).ok())
+                    .unwrap_or_default();
+                let arguments = row.content.get("arguments")
+                    .cloned()
+                    .unwrap_or(serde_json::Value::Null);
+                let call_id = row.content.get("call_id")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                MessageContentData::ToolCall { tool_name, server_id, arguments, call_id }
+            }
+            MessageContentType::ToolCallPendingApproval => {
+                let tool_name = row.content.get("tool_name")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let server_id = row.content.get("server_id")
+                    .and_then(|v| v.as_str())
+                    .and_then(|s| Uuid::parse_str(s).ok())
+                    .unwrap_or_default();
+                let arguments = row.content.get("arguments")
+                    .cloned()
+                    .unwrap_or(serde_json::Value::Null);
+                MessageContentData::ToolCallPendingApproval { tool_name, server_id, arguments }
+            }
+            MessageContentType::ToolCallPendingApprovalCancel => {
+                let tool_name = row.content.get("tool_name")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let server_id = row.content.get("server_id")
+                    .and_then(|v| v.as_str())
+                    .and_then(|s| Uuid::parse_str(s).ok())
+                    .unwrap_or_default();
+                MessageContentData::ToolCallPendingApprovalCancel { tool_name, server_id }
             }
             MessageContentType::ToolResult => {
-                MessageContentData::Text { text: row.content.to_string() }
+                let call_id = row.content.get("call_id")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let result = row.content.get("result")
+                    .cloned()
+                    .unwrap_or(serde_json::Value::Null);
+                let success = row.content.get("success")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false);
+                let error_message = row.content.get("error_message")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
+                MessageContentData::ToolResult { call_id, result, success, error_message }
             }
             MessageContentType::FileAttachment => {
-                MessageContentData::Text { text: row.content.to_string() }
+                let file_id = row.content.get("file_id")
+                    .and_then(|v| v.as_str())
+                    .and_then(|s| Uuid::parse_str(s).ok())
+                    .unwrap_or_default();
+                let filename = row.content.get("filename")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let file_type = row.content.get("file_type")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
+                MessageContentData::FileAttachment { file_id, filename, file_type }
             }
             MessageContentType::Error => {
-                MessageContentData::Text { text: row.content.to_string() }
+                let error_type = row.content.get("error_type")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let message = row.content.get("message")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let details = row.content.get("details").cloned();
+                MessageContentData::Error { error_type, message, details }
             }
         };
 
@@ -356,6 +462,10 @@ impl FileReference {
 pub enum ContentPart {
     Text(String),
     FileReference(FileReference),
+    ToolResult {
+        call_id: String,
+        output: String,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

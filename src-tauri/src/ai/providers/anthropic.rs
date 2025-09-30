@@ -55,6 +55,7 @@ struct AnthropicStreamResponse {
     event_type: String,
     delta: Option<AnthropicDelta>,
     content_block: Option<AnthropicContentBlock>,
+    #[allow(dead_code)]
     index: Option<u32>,
 }
 
@@ -140,6 +141,12 @@ impl AnthropicProvider {
                                 system_text
                                     .push_str(&format!("File reference: {}", file_ref.filename));
                             }
+                            ContentPart::ToolResult { call_id, output } => {
+                                if !system_text.is_empty() {
+                                    system_text.push('\n');
+                                }
+                                system_text.push_str(&format!("Tool result [{}]: {}", call_id, output));
+                            }
                         }
                     }
                     Ok((Some(system_text), None))
@@ -200,6 +207,14 @@ impl AnthropicProvider {
                         );
                         // No MIME type - skip it completely
                     }
+                }
+                ContentPart::ToolResult { call_id, output } => {
+                    // Anthropic format for tool results
+                    content_array.push(json!({
+                        "type": "tool_result",
+                        "tool_use_id": call_id,
+                        "content": output
+                    }));
                 }
             }
         }

@@ -90,7 +90,7 @@ async fn load_message_contents(
     let content_rows = sqlx::query_as!(
         MessageContentRow,
         r#"
-        SELECT id, message_id, content_type as "content_type: crate::database::models::MessageContentType", content, sequence_order, created_at, updated_at
+        SELECT id, message_id, content_type, content, sequence_order, created_at, updated_at
         FROM message_contents
         WHERE message_id = ANY($1)
         ORDER BY message_id, sequence_order ASC
@@ -578,6 +578,70 @@ pub async fn save_message(
         files: files.into(),
         contents: vec![content_item],
     })
+}
+
+/// Get a single message by ID
+pub async fn get_message_by_id(
+    message_id: Uuid,
+    user_id: Uuid,
+) -> Result<Option<Message>, Error> {
+    let pool = get_database_pool()?;
+    let pool = pool.as_ref();
+
+    // Get the message row
+    let message_row = sqlx::query_as!(
+        MessageRow,
+        r#"
+        SELECT
+            m.id, m.conversation_id, m.role,
+            m.originated_from_id, m.edit_count,
+            m.created_at, m.updated_at,
+            '{}'::jsonb as metadata
+        FROM messages m
+        INNER JOIN conversations c ON c.id = m.conversation_id
+        WHERE m.id = $1 AND c.user_id = $2
+        "#,
+        message_id,
+        user_id
+    )
+    .fetch_optional(pool)
+    .await?;
+
+    let message_row = match message_row {
+        Some(row) => row,
+        None => return Ok(None),
+    };
+
+    // Load files and contents
+    let message_ids = vec![message_id];
+    let files_by_message = load_files_for_messages(pool, &message_ids).await?;
+    let contents_by_message = load_message_contents(pool, &message_ids).await?;
+
+    let files = files_by_message
+        .get(&message_row.id)
+        .cloned()
+        .unwrap_or_default()
+        .into();
+    let contents = contents_by_message
+        .get(&message_row.id)
+        .cloned()
+        .unwrap_or_default();
+
+    let metadata: JsonOption<Vec<crate::database::models::chat::MessageMetadata>> =
+        serde_json::from_value(message_row.metadata).unwrap_or_default();
+
+    Ok(Some(Message {
+        id: message_row.id,
+        conversation_id: message_row.conversation_id,
+        role: message_row.role,
+        originated_from_id: message_row.originated_from_id,
+        edit_count: message_row.edit_count,
+        created_at: message_row.created_at,
+        updated_at: message_row.updated_at,
+        metadata,
+        files,
+        contents,
+    }))
 }
 
 /// Get messages for a conversation's active branch
@@ -1267,4 +1331,165 @@ pub async fn switch_conversation_branch(
     .await?;
 
     Ok(result.rows_affected() > 0)
+}
+
+// ============================================
+// MCP Tool Approval Query Functions
+// ============================================
+
+/// Check if a tool is approved for this conversation
+pub async fn check_tool_approval(
+    conversation_id: Uuid,
+    server_id: Uuid,
+    tool_name: &str,
+) -> Result<bool, Error> {
+    let pool = get_database_pool().map_err(|e| Error::Configuration(e.into()))?;
+
+    let approval = sqlx::query!(
+        r#"
+        SELECT approved, expires_at
+        FROM mcp_tool_approvals
+        WHERE conversation_id = $1
+          AND server_id = $2
+          AND tool_name = $3
+          AND approved = true
+          AND (expires_at IS NULL OR expires_at > NOW())
+        "#,
+        conversation_id,
+        server_id,
+        tool_name
+    )
+    .fetch_optional(pool.as_ref())
+    .await?;
+
+    Ok(approval.is_some())
+}
+
+/// Save tool result content to message_contents table
+pub async fn save_tool_result_content(
+    message_id: Uuid,
+    result_content: MessageContentData,
+) -> Result<(), Error> {
+    let pool = get_database_pool().map_err(|e| Error::Configuration(e.into()))?;
+
+    // Get current max sequence order for this message
+    let max_seq = sqlx::query!(
+        "SELECT COALESCE(MAX(sequence_order), -1) as max_seq FROM message_contents WHERE message_id = $1",
+        message_id
+    )
+    .fetch_one(pool.as_ref())
+    .await?
+    .max_seq
+    .unwrap_or(-1);
+
+    let content_id = Uuid::new_v4();
+    let sequence = (max_seq + 1) as i32;
+    let content_type = MessageContentType::ToolResult.as_str();
+    let content_json = serde_json::to_value(&result_content)
+        .map_err(|e| Error::Decode(Box::new(e)))?;
+
+    sqlx::query!(
+        r#"
+        INSERT INTO message_contents (id, message_id, content_type, content, sequence_order)
+        VALUES ($1, $2, $3, $4, $5)
+        "#,
+        content_id,
+        message_id,
+        content_type,
+        content_json,
+        sequence
+    )
+    .execute(pool.as_ref())
+    .await?;
+
+    Ok(())
+}
+
+/// Save pending tool approval content to message_contents table
+pub async fn save_pending_tool_approval_content(
+    message_id: Uuid,
+    pending_content: MessageContentData,
+) -> Result<(), Error> {
+    let pool = get_database_pool().map_err(|e| Error::Configuration(e.into()))?;
+
+    // Get current max sequence order for this message
+    let max_seq = sqlx::query!(
+        "SELECT COALESCE(MAX(sequence_order), -1) as max_seq FROM message_contents WHERE message_id = $1",
+        message_id
+    )
+    .fetch_one(pool.as_ref())
+    .await?
+    .max_seq
+    .unwrap_or(-1);
+
+    let content_id = Uuid::new_v4();
+    let sequence = (max_seq + 1) as i32;
+    let content_type = MessageContentType::ToolCallPendingApproval.as_str();
+    let content_json = serde_json::to_value(&pending_content)
+        .map_err(|e| Error::Decode(Box::new(e)))?;
+
+    sqlx::query!(
+        r#"
+        INSERT INTO message_contents (id, message_id, content_type, content, sequence_order)
+        VALUES ($1, $2, $3, $4, $5)
+        "#,
+        content_id,
+        message_id,
+        content_type,
+        content_json,
+        sequence
+    )
+    .execute(pool.as_ref())
+    .await?;
+
+    Ok(())
+}
+
+/// Append text content to an existing message
+pub async fn append_text_content_to_message(
+    message_id: Uuid,
+    text: String,
+) -> Result<(), Error> {
+    let pool = get_database_pool().map_err(|e| Error::Configuration(e.into()))?;
+
+    // Get current max sequence order for this message
+    let max_seq = sqlx::query!(
+        "SELECT COALESCE(MAX(sequence_order), -1) as max_seq FROM message_contents WHERE message_id = $1",
+        message_id
+    )
+    .fetch_one(pool.as_ref())
+    .await?
+    .max_seq
+    .unwrap_or(-1);
+
+    let content_id = Uuid::new_v4();
+    let sequence = (max_seq + 1) as i32;
+    let content_type = MessageContentType::Text.as_str();
+    let content_data = MessageContentData::Text { text };
+    let content_json = serde_json::to_value(&content_data)
+        .map_err(|e| Error::Decode(Box::new(e)))?;
+
+    sqlx::query!(
+        r#"
+        INSERT INTO message_contents (id, message_id, content_type, content, sequence_order)
+        VALUES ($1, $2, $3, $4, $5)
+        "#,
+        content_id,
+        message_id,
+        content_type,
+        content_json,
+        sequence
+    )
+    .execute(pool.as_ref())
+    .await?;
+
+    // Update the message's updated_at timestamp
+    sqlx::query!(
+        "UPDATE messages SET updated_at = NOW() WHERE id = $1",
+        message_id
+    )
+    .execute(pool.as_ref())
+    .await?;
+
+    Ok(())
 }

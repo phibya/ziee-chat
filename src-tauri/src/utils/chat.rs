@@ -16,6 +16,7 @@ use crate::ai::{
     file_helpers::load_file_reference,
 };
 use crate::api::chat::ChatMessageRequest;
+use crate::database::models::MessageContentData;
 use crate::database::queries::{
     assistants::get_assistant_by_id,
     chat::get_conversation_messages,
@@ -44,10 +45,38 @@ pub async fn build_chat_messages(
     match get_conversation_messages(request.conversation_id, user_id).await {
         Ok(conversation_messages) => {
             for msg in conversation_messages {
-                messages.push(ChatMessage {
-                    role: msg.role.clone(),
-                    content: MessageContent::Text(msg.get_text_content()),
-                });
+                // Process each content item in the message
+                for content_item in &msg.contents {
+                    match &content_item.content {
+                        MessageContentData::Text { text } => {
+                            messages.push(ChatMessage {
+                                role: msg.role.clone(),
+                                content: MessageContent::Text(text.clone()),
+                            });
+                        }
+                        MessageContentData::ToolResult { call_id, result, success, error_message } => {
+                            // Tool results should be sent with role "tool"
+                            let output = if *success {
+                                serde_json::to_string_pretty(result).unwrap_or_else(|_| result.to_string())
+                            } else {
+                                error_message.clone().unwrap_or_else(|| "Tool execution failed".to_string())
+                            };
+
+                            messages.push(ChatMessage {
+                                role: "tool".to_string(),
+                                content: MessageContent::Multimodal(vec![
+                                    ContentPart::ToolResult {
+                                        call_id: call_id.clone(),
+                                        output,
+                                    }
+                                ]),
+                            });
+                        }
+                        // Skip other content types (ToolCall, ToolCallPendingApproval, etc.)
+                        // as they are internal to our system and not sent to the AI provider
+                        _ => {}
+                    }
+                }
             }
         }
         Err(e) => {

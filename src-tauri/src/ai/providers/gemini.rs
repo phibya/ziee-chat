@@ -345,6 +345,12 @@ impl GeminiProvider {
                 ContentPart::Text(text) => {
                     gemini_parts.push(GeminiPart::Text { text: text.clone() });
                 }
+                ContentPart::ToolResult { call_id, output } => {
+                    // Convert tool result to text format for Gemini
+                    gemini_parts.push(GeminiPart::Text {
+                        text: format!("[Tool Result {}]: {}", call_id, output),
+                    });
+                }
                 ContentPart::FileReference(file_ref) => {
                     if let Some(mime_type) = &file_ref.mime_type {
                         if self.supported_file_types().contains(mime_type) {
@@ -402,6 +408,12 @@ impl GeminiProvider {
                                     system_text.push('\n');
                                 }
                                 system_text.push_str(text);
+                            }
+                            ContentPart::ToolResult { call_id, output } => {
+                                if !system_text.is_empty() {
+                                    system_text.push('\n');
+                                }
+                                system_text.push_str(&format!("Tool result [{}]: {}", call_id, output));
                             }
                             ContentPart::FileReference(file_ref) => {
                                 if !system_text.is_empty() {

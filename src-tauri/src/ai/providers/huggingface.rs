@@ -219,6 +219,12 @@ impl HuggingFaceProvider {
                 ContentPart::Text(text) => {
                     content_array.push(HuggingFaceContentPart::Text { text: text.clone() });
                 }
+                ContentPart::ToolResult { call_id, output } => {
+                    // Convert tool result to text format
+                    content_array.push(HuggingFaceContentPart::Text {
+                        text: format!("[Tool Result {}]: {}", call_id, output),
+                    });
+                }
                 ContentPart::FileReference(file_ref) => {
                     if let Some(mime_type) = &file_ref.mime_type {
                         if self.is_supported_image_type(mime_type) {
@@ -365,6 +371,9 @@ impl HuggingFaceProvider {
                                 ContentPart::Text(text) => text.clone(),
                                 ContentPart::FileReference(file_ref) => {
                                     format!("[File: {}]", file_ref.filename)
+                                }
+                                ContentPart::ToolResult { call_id, output } => {
+                                    format!("[Tool Result {}]: {}", call_id, output)
                                 }
                             })
                             .collect();

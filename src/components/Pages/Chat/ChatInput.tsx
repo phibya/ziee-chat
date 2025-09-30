@@ -40,6 +40,7 @@ import { BsFileEarmarkPlus } from 'react-icons/bs'
 import { IoIosArrowDown } from 'react-icons/io'
 import { debounce } from '../../../utils/debounce.ts'
 import { PermissionGuard } from '../../Auth/PermissionGuard.tsx'
+import { DivScrollY } from '../../common/DivScrollY.tsx'
 
 const { TextArea } = Input
 const { Text } = Typography
@@ -690,14 +691,20 @@ export const ChatInput = function ChatInput({
 
       {/* MCP Tools Selection Modal */}
       <Modal
-        title="Select MCP Tools"
+        title="Tools"
         open={isToolModalVisible}
         onOk={() => setIsToolModalVisible(false)}
         onCancel={() => setIsToolModalVisible(false)}
         width={700}
+        classNames={{
+          content: '!px-0',
+          header: '!px-3 !pb-1',
+          footer: '!px-3',
+        }}
       >
-        <div className="max-h-[60vh] overflow-y-auto">
+        <DivScrollY className="max-h-[60vh] w-full h-full">
           <Collapse
+            className={'w-full !mx-3 !bg-transparent'}
             items={Array.from(toolsByServer.entries())
               .map(([serverId, serverTools]) => {
                 const server = servers.find(s => s.id === serverId)
@@ -867,7 +874,7 @@ export const ChatInput = function ChatInput({
               No tools available from enabled and active MCP servers
             </Text>
           )}
-        </div>
+        </DivScrollY>
       </Modal>
     </div>
   )
