@@ -25,6 +25,7 @@ impl RAGSimpleVectorEngine {
                 },
             ],
             stream: false,
+            tools: None, // No tools needed for RAG query refinement
         }
     }
     /// Retrieve text chunks from vector database (LightRAG _get_vector_context pattern)

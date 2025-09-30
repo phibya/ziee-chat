@@ -343,6 +343,37 @@ function getTypeFromSchema(
     return types.length === 1 ? types[0] : types.join(' | ')
   }
 
+  // Handle oneOf patterns (union types with schema objects)
+  if (schema.oneOf && Array.isArray(schema.oneOf)) {
+    const types = schema.oneOf
+      .map((subSchema: any) => {
+        if (isSchemaReference(subSchema)) {
+          return extractSchemaName(subSchema.$ref)
+        } else if (subSchema.type === 'object' && subSchema.properties) {
+          // Handle inline object schemas with discriminator type
+          const props: string[] = []
+          for (const [propName, propSchema] of Object.entries(subSchema.properties)) {
+            let propType = getTypeFromSchema(propSchema, false)
+
+            // Handle const values (literal types)
+            if (propSchema.const !== undefined) {
+              propType = typeof propSchema.const === 'string' ? `'${propSchema.const}'` : String(propSchema.const)
+            }
+
+            const isRequired = subSchema.required?.includes(propName)
+            const optionalMarker = isRequired ? '' : '?'
+            props.push(`${propName}${optionalMarker}: ${propType}`)
+          }
+          return `{ ${props.join('; ')} }`
+        } else {
+          return getTypeFromSchema(subSchema, isOptionalParamOrNullable)
+        }
+      })
+      .filter((type: string | null) => type !== null)
+
+    return types.length === 1 ? types[0] : types.join(' | ')
+  }
+
   // Handle allOf patterns (intersection types with schema references)
   if (schema.allOf && Array.isArray(schema.allOf)) {
     const types = schema.allOf
@@ -466,6 +497,42 @@ function generateSchemaInterface(
     return generatePermissionEnum(schema.enum)
   }
 
+  // Handle oneOf patterns for discriminated unions
+  if (schema.oneOf && Array.isArray(schema.oneOf)) {
+    // Special handling for MessageContentData to create separate named types
+    if (name === 'MessageContentData') {
+      return generateMessageContentDataTypes(schema.oneOf)
+    }
+
+    const types = schema.oneOf
+      .map((subSchema: any) => {
+        if (isSchemaReference(subSchema)) {
+          return extractSchemaName(subSchema.$ref)
+        } else if (subSchema.type === 'object' && subSchema.properties) {
+          // Handle inline object schemas with discriminator type
+          const props: string[] = []
+          for (const [propName, propSchema] of Object.entries(subSchema.properties)) {
+            let propType = getTypeFromSchema(propSchema, false)
+
+            // Handle const values (literal types)
+            if (propSchema.const !== undefined) {
+              propType = typeof propSchema.const === 'string' ? `'${propSchema.const}'` : String(propSchema.const)
+            }
+
+            const isRequired = subSchema.required?.includes(propName)
+            const optionalMarker = isRequired ? '' : '?'
+            props.push(`  ${propName}${optionalMarker}: ${propType}`)
+          }
+          return `{\n${props.join('\n')}\n}`
+        } else {
+          return getTypeFromSchema(subSchema, false)
+        }
+      })
+      .filter((type: string | null) => type !== null)
+
+    return `export type ${name} = ${types.join(' | ')}`
+  }
+
   if (schema.type === 'object' && schema.properties) {
     const properties: string[] = []
 
@@ -548,6 +615,57 @@ function generateSSEEventType(name: string, oneOfVariants: (SchemaReference | Sc
   return `export type ${name} = {
 ${eventTypes.join('\n')}
 }`
+}
+
+function generateMessageContentDataTypes(oneOfVariants: (SchemaReference | SchemaType)[]): string {
+  const typeDefinitions: string[] = []
+  const unionTypes: string[] = []
+
+  for (const variant of oneOfVariants) {
+    if (variant.type === 'object' && variant.properties) {
+      // Extract the type discriminator value
+      const typeProperty = variant.properties.type
+      if (typeProperty && typeProperty.const) {
+        const typeValue = typeProperty.const
+
+        // Convert type value to TypeScript interface name
+        const typeName = `MessageContentData${typeValue.charAt(0).toUpperCase()}${typeValue.slice(1).replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())}`
+
+        // Generate properties for this variant (excluding the discriminator 'type' field)
+        const props: string[] = []
+        for (const [propName, propSchema] of Object.entries(variant.properties)) {
+          // Skip the 'type' field as it's only a discriminator for TypeScript unions
+          if (propName === 'type') {
+            continue
+          }
+
+          let propType = getTypeFromSchema(propSchema, false)
+
+          // Handle const values (literal types)
+          if (propSchema.const !== undefined) {
+            propType = typeof propSchema.const === 'string' ? `'${propSchema.const}'` : String(propSchema.const)
+          }
+
+          const isRequired = variant.required?.includes(propName)
+          const optionalMarker = isRequired ? '' : '?'
+          props.push(`  ${propName}${optionalMarker}: ${propType}`)
+        }
+
+        // Generate the interface
+        typeDefinitions.push(`export interface ${typeName} {
+${props.join('\n')}
+}`)
+
+        unionTypes.push(typeName)
+      }
+    }
+  }
+
+  // Generate the main union type
+  const mainUnionType = `export type MessageContentData = ${unionTypes.join(' | ')}`
+
+  // Return all type definitions
+  return [...typeDefinitions, '', mainUnionType].join('\n')
 }
 
 function generatePermissionEnum(enumValues: any[]): string {

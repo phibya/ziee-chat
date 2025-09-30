@@ -66,6 +66,7 @@ impl AIModel for ModelInstance {
             provider_id: self.model.provider_id,
             stream: request.stream,
             parameters: self.model.parameters.as_ref().cloned(),
+            tools: request.tools, // Pass tools from simplified request
         };
         
         // Delegate to the underlying AIProvider
@@ -84,6 +85,7 @@ impl AIModel for ModelInstance {
             provider_id: self.model.provider_id,
             stream: request.stream,
             parameters: self.model.parameters.as_ref().cloned(),
+            tools: request.tools, // Pass tools from simplified request
         };
         
         // Delegate to the underlying AIProvider

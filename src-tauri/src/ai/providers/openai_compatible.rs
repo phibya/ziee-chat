@@ -38,7 +38,22 @@ struct OpenAICompatibleChoice {
 #[derive(Debug, Deserialize, Serialize)]
 struct OpenAICompatibleMessage {
     role: String,
-    content: OpenAICompatibleContent,
+    content: Option<OpenAICompatibleContent>,
+    tool_calls: Option<Vec<OpenAIToolCall>>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct OpenAIToolCall {
+    id: String,
+    #[serde(rename = "type")]
+    call_type: String,
+    function: OpenAIFunction,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct OpenAIFunction {
+    name: String,
+    arguments: String, // JSON string
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -85,6 +100,22 @@ struct OpenAICompatibleStreamChoice {
 #[derive(Debug, Deserialize)]
 struct OpenAICompatibleStreamDelta {
     content: Option<String>,
+    tool_calls: Option<Vec<OpenAIToolCallDelta>>,
+}
+
+#[derive(Debug, Deserialize)]
+struct OpenAIToolCallDelta {
+    index: u32,
+    id: Option<String>,
+    #[serde(rename = "type")]
+    call_type: Option<String>,
+    function: Option<OpenAIFunctionDelta>,
+}
+
+#[derive(Debug, Deserialize)]
+struct OpenAIFunctionDelta {
+    name: Option<String>,
+    arguments: Option<String>,
 }
 
 impl OpenAICompatibleProvider {
@@ -231,14 +262,16 @@ impl OpenAICompatibleProvider {
             let openai_message = match &message.content {
                 MessageContent::Text(text) => OpenAICompatibleMessage {
                     role: message.role.clone(),
-                    content: OpenAICompatibleContent::Text(text.clone()),
+                    content: Some(OpenAICompatibleContent::Text(text.clone())),
+                    tool_calls: None,
                 },
                 MessageContent::Multimodal(parts) => {
                     if self.supports_vision() {
                         let content_parts = self.process_multimodal_content(parts).await?;
                         OpenAICompatibleMessage {
                             role: message.role.clone(),
-                            content: OpenAICompatibleContent::Array(content_parts),
+                            content: Some(OpenAICompatibleContent::Array(content_parts)),
+                            tool_calls: None,
                         }
                     } else {
                         // Convert to text for non-vision providers
@@ -254,7 +287,8 @@ impl OpenAICompatibleProvider {
 
                         OpenAICompatibleMessage {
                             role: message.role.clone(),
-                            content: OpenAICompatibleContent::Text(text_parts.join("\n")),
+                            content: Some(OpenAICompatibleContent::Text(text_parts.join("\n"))),
+                            tool_calls: None,
                         }
                     }
                 }
@@ -277,6 +311,24 @@ impl OpenAICompatibleProvider {
             "presence_penalty": params.and_then(|p| p.presence_penalty).unwrap_or(0.0),
             "stream": stream
         });
+
+        // Add tools if provided
+        if let Some(tools) = &request.tools {
+            let openai_tools: Vec<serde_json::Value> = tools
+                .iter()
+                .map(|tool| {
+                    json!({
+                        "type": "function",
+                        "function": {
+                            "name": tool.name,
+                            "description": tool.description,
+                            "parameters": tool.input_schema
+                        }
+                    })
+                })
+                .collect();
+            payload["tools"] = json!(openai_tools);
+        }
 
         // Add optional parameters if present
         if let Some(params) = params {
@@ -355,9 +407,20 @@ impl AIProvider for OpenAICompatibleProvider {
         let api_response: OpenAICompatibleResponse = response.json().await?;
 
         if let Some(choice) = api_response.choices.into_iter().next() {
+            // Parse tool calls
+            let tool_use = choice.message.tool_calls.as_ref().and_then(|calls| {
+                calls.first().map(|call| {
+                    crate::ai::core::providers::ToolUse {
+                        id: call.id.clone(),
+                        name: call.function.name.clone(),
+                        input: serde_json::from_str(&call.function.arguments).unwrap_or(json!({})),
+                    }
+                })
+            });
+
             let content = match choice.message.content {
-                OpenAICompatibleContent::Text(text) => text,
-                OpenAICompatibleContent::Array(parts) => {
+                Some(OpenAICompatibleContent::Text(text)) => text,
+                Some(OpenAICompatibleContent::Array(parts)) => {
                     // Extract text from content parts
                     parts
                         .into_iter()
@@ -368,6 +431,7 @@ impl AIProvider for OpenAICompatibleProvider {
                         .collect::<Vec<_>>()
                         .join("")
                 }
+                None => String::new(),
             };
 
             Ok(ChatResponse {
@@ -378,6 +442,7 @@ impl AIProvider for OpenAICompatibleProvider {
                     completion_tokens: u.completion_tokens,
                     total_tokens: u.total_tokens,
                 }),
+                tool_use,
             })
         } else {
             Err(format!("No choices returned from {} API", self.provider_name).into())
@@ -410,10 +475,13 @@ impl AIProvider for OpenAICompatibleProvider {
 
         // Create a buffer to accumulate partial SSE chunks
         let buffer = Arc::new(Mutex::new(String::new()));
+        // Track current tool call being accumulated: (id, name, arguments)
+        let current_tool_call = Arc::new(Mutex::new(None::<(String, String, String)>));
         let provider_name = self.provider_name;
 
         let stream = response.bytes_stream().map(move |result| {
             let buffer = buffer.clone();
+            let current_tool_call = current_tool_call.clone();
             match result {
                 Ok(bytes) => {
                     let chunk = String::from_utf8_lossy(&bytes);
@@ -435,9 +503,59 @@ impl AIProvider for OpenAICompatibleProvider {
                                 Ok(stream_response) => {
                                     if let Some(choice) = stream_response.choices.into_iter().next()
                                     {
+                                        let mut tool_use = None;
+
+                                        // Handle tool call deltas
+                                        if let Some(tool_call_deltas) = &choice.delta.tool_calls {
+                                            let mut tool_guard = current_tool_call.lock().unwrap();
+
+                                            for delta in tool_call_deltas {
+                                                if delta.index == 0 {
+                                                    // Initialize or update tool call
+                                                    if let Some((ref mut id, ref mut name, ref mut args)) = *tool_guard {
+                                                        // Append to existing tool call
+                                                        if let Some(delta_id) = &delta.id {
+                                                            id.push_str(delta_id);
+                                                        }
+                                                        if let Some(func) = &delta.function {
+                                                            if let Some(delta_name) = &func.name {
+                                                                name.push_str(delta_name);
+                                                            }
+                                                            if let Some(delta_args) = &func.arguments {
+                                                                args.push_str(delta_args);
+                                                            }
+                                                        }
+                                                    } else if let Some(delta_id) = &delta.id {
+                                                        // Start new tool call
+                                                        let name = delta.function.as_ref()
+                                                            .and_then(|f| f.name.clone())
+                                                            .unwrap_or_default();
+                                                        let args = delta.function.as_ref()
+                                                            .and_then(|f| f.arguments.clone())
+                                                            .unwrap_or_default();
+                                                        *tool_guard = Some((delta_id.clone(), name, args));
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        // If finish_reason is tool_calls, return the complete tool use
+                                        if choice.finish_reason.as_deref() == Some("tool_calls") {
+                                            let mut tool_guard = current_tool_call.lock().unwrap();
+                                            if let Some((id, name, args)) = tool_guard.take() {
+                                                let input = serde_json::from_str(&args).unwrap_or(serde_json::json!({}));
+                                                tool_use = Some(crate::ai::core::providers::ToolUse {
+                                                    id,
+                                                    name,
+                                                    input,
+                                                });
+                                            }
+                                        }
+
                                         result = Some(Ok(StreamingChunk {
                                             content: choice.delta.content,
                                             finish_reason: choice.finish_reason,
+                                            tool_use,
                                         }));
                                         break;
                                     }
@@ -455,6 +573,7 @@ impl AIProvider for OpenAICompatibleProvider {
                     result.unwrap_or(Ok(StreamingChunk {
                         content: None,
                         finish_reason: None,
+                        tool_use: None,
                     }))
                 }
                 Err(e) => Err(Box::new(e) as Box<dyn std::error::Error + Send + Sync>),

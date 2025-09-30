@@ -478,6 +478,7 @@ impl AIProvider for MistralProvider {
                     completion_tokens: u.completion_tokens,
                     total_tokens: u.total_tokens,
                 }),
+                tool_use: None, // Mistral provider doesn't support tool calling yet
             })
         } else {
             Err("No choices returned from Mistral API".into())
@@ -535,6 +536,7 @@ impl AIProvider for MistralProvider {
                                         result = Some(Ok(StreamingChunk {
                                             content: choice.delta.content,
                                             finish_reason: choice.finish_reason,
+                                            tool_use: None,
                                         }));
                                         break;
                                     }
@@ -552,6 +554,7 @@ impl AIProvider for MistralProvider {
                     result.unwrap_or(Ok(StreamingChunk {
                         content: None,
                         finish_reason: None,
+                        tool_use: None,
                     }))
                 }
                 Err(e) => Err(Box::new(e) as Box<dyn std::error::Error + Send + Sync>),

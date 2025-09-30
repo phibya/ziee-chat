@@ -311,6 +311,7 @@ impl AIProvider for LocalProvider {
                     completion_tokens: u.completion_tokens,
                     total_tokens: u.total_tokens,
                 }),
+                tool_use: None, // Local provider doesn't support tool calling yet
             })
         } else {
             Err("No choices returned from local API".into())
@@ -375,6 +376,7 @@ impl AIProvider for LocalProvider {
                                         result = Some(Ok(StreamingChunk {
                                             content: choice.delta.content,
                                             finish_reason: choice.finish_reason,
+                                            tool_use: None,
                                         }));
                                         break;
                                     }
@@ -392,6 +394,7 @@ impl AIProvider for LocalProvider {
                     result.unwrap_or(Ok(StreamingChunk {
                         content: None,
                         finish_reason: None,
+                        tool_use: None,
                     }))
                 }
                 Err(e) => Err(Box::new(e) as Box<dyn std::error::Error + Send + Sync>),
@@ -527,6 +530,7 @@ impl LocalProvider {
                     completion_tokens: u.completion_tokens,
                     total_tokens: u.total_tokens,
                 }),
+                tool_use: None, // Local provider doesn't support tool calling yet
             })
         } else {
             Err("No choices returned from local API".into())
@@ -594,6 +598,7 @@ impl LocalProvider {
                                         result = Some(Ok(StreamingChunk {
                                             content: choice.delta.content,
                                             finish_reason: choice.finish_reason,
+                                            tool_use: None,
                                         }));
                                         break;
                                     }
@@ -611,6 +616,7 @@ impl LocalProvider {
                     result.unwrap_or(Ok(StreamingChunk {
                         content: None,
                         finish_reason: None,
+                        tool_use: None,
                     }))
                 }
                 Err(e) => Err(Box::new(e) as Box<dyn std::error::Error + Send + Sync>),

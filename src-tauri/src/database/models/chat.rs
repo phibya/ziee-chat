@@ -391,6 +391,22 @@ impl ChatMessage {
     }
 }
 
+/// Tool definition sent to AI provider
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct ToolDefinition {
+    pub name: String,
+    pub description: Option<String>,
+    pub input_schema: serde_json::Value, // JSON Schema for tool parameters
+}
+
+/// Tool use request from AI (parsed from AI response)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ToolUse {
+    pub id: String,              // Tool call ID from provider
+    pub name: String,            // Tool name
+    pub input: serde_json::Value, // Tool arguments
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatRequest {
     pub messages: Vec<ChatMessage>,
@@ -399,6 +415,7 @@ pub struct ChatRequest {
     pub provider_id: Uuid,
     pub stream: bool,
     pub parameters: Option<crate::database::models::model::ModelParameters>,
+    pub tools: Option<Vec<ToolDefinition>>, // Tool definitions sent to AI
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -406,6 +423,7 @@ pub struct AIProviderChatResponse {
     pub content: String,
     pub finish_reason: Option<String>,
     pub usage: Option<Usage>,
+    pub tool_use: Option<ToolUse>, // Tool request from AI (not executed yet)
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -419,4 +437,5 @@ pub struct Usage {
 pub struct StreamingChunk {
     pub content: Option<String>,
     pub finish_reason: Option<String>,
+    pub tool_use: Option<ToolUse>, // Tool request from AI (not executed yet)
 }

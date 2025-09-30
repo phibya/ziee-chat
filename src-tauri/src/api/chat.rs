@@ -20,7 +20,7 @@ use crate::database::queries::{
     chat,
     models::{get_model_by_id, get_provider_by_model_id},
 };
-use crate::utils::chat::{build_chat_messages, build_single_user_message};
+use crate::utils::chat::{build_chat_messages, build_single_user_message, build_tool_definitions, EnabledMCPTool};
 use schemars::JsonSchema;
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -30,6 +30,7 @@ pub struct ChatMessageRequest {
     pub model_id: Uuid,
     pub assistant_id: Uuid,
     pub file_ids: Option<Vec<Uuid>>, // Optional file attachments
+    pub enabled_tools: Option<Vec<EnabledMCPTool>>, // Optional MCP tools to send to AI
 }
 
 #[derive(Debug, Clone, Serialize, JsonSchema)]
@@ -213,10 +214,24 @@ async fn stream_ai_response(
             .await;
     }
 
+    // Build tool definitions from enabled_tools if provided
+    let tools = if let Some(enabled_tools) = &request.enabled_tools {
+        match build_tool_definitions(enabled_tools).await {
+            Ok(defs) => Some(defs),
+            Err(e) => {
+                eprintln!("Warning: Failed to build tool definitions: {}", e);
+                None
+            }
+        }
+    } else {
+        None
+    };
+
     // Call AI model with streaming
     match ai_model.chat_stream(SimplifiedChatRequest {
         messages,
         stream: true,
+        tools,
     }).await {
         Ok(mut stream) => {
             let mut full_content = String::new();
@@ -485,6 +500,7 @@ async fn generate_and_update_conversation_title(
         match ai_model.chat(SimplifiedChatRequest {
             messages: chat_messages,
             stream: false,
+            tools: None, // Don't use tools for title generation
         }).await {
             Ok(response) => {
                 let generated_title = response.content.trim().to_string();

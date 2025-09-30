@@ -106,3 +106,61 @@ pub fn build_single_user_message(content: String) -> Vec<ChatMessage> {
     }]
 }
 
+// ===================================================================
+// Tool Calling Utilities
+// ===================================================================
+
+use crate::database::models::chat::ToolDefinition;
+use crate::database::models::mcp_tool::MCPTool;
+use crate::database::queries::mcp_tools;
+
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+
+/// Structure to track which tools are enabled for a conversation
+/// This will be used to build tool definitions from MCP tools
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct EnabledMCPTool {
+    pub server_id: Uuid,
+    pub name: String,
+}
+
+/// Convert an MCP tool to an AI provider tool definition format
+pub fn mcp_tool_to_definition(mcp_tool: &MCPTool) -> ToolDefinition {
+    ToolDefinition {
+        name: mcp_tool.tool_name.clone(),
+        description: mcp_tool.tool_description.clone(),
+        input_schema: mcp_tool.input_schema.clone(),
+    }
+}
+
+/// Convert a list of enabled MCP tools to tool definitions for AI providers
+/// This function fetches the full MCP tool data from the database and converts it
+/// to the ToolDefinition format that AI providers understand
+pub async fn build_tool_definitions(
+    enabled_tools: &[EnabledMCPTool],
+) -> Result<Vec<ToolDefinition>, Box<dyn std::error::Error + Send + Sync>> {
+    let mut definitions = Vec::new();
+
+    for enabled_tool in enabled_tools {
+        // Fetch MCP tool from database
+        match mcp_tools::get_tool_by_server_and_name(enabled_tool.server_id, &enabled_tool.name)
+            .await
+        {
+            Ok(Some(mcp_tool)) => {
+                definitions.push(mcp_tool_to_definition(&mcp_tool));
+            }
+            Ok(None) => {
+                eprintln!(
+                    "Tool not found: {} on server {}",
+                    enabled_tool.name, enabled_tool.server_id
+                );
+            }
+            Err(e) => {
+                eprintln!("Error fetching tool: {}", e);
+            }
+        }
+    }
+
+    Ok(definitions)
+}

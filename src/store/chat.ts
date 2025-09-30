@@ -358,6 +358,7 @@ export const createChatStore = (conversation: string | Conversation) => {
                 model_id: params.modelId,
                 assistant_id: params.assistantId,
                 file_ids: params.fileIds,
+                enabled_tools: params.enabledTools,
               },
               {
                 SSE: {
@@ -511,6 +512,7 @@ export const createChatStore = (conversation: string | Conversation) => {
                 assistant_id: params.assistantId,
                 content: params.content,
                 file_ids: params.fileIds,
+                enabled_tools: params.enabledTools,
               },
               {
                 SSE: {
@@ -750,6 +752,7 @@ export interface SendChatMessageParams {
   assistantId: string
   modelId: string
   fileIds?: string[]
+  enabledTools?: Array<{ server_id: string; name: string }>
 }
 
 // this function is independent of the chat store

@@ -500,6 +500,7 @@ impl AIProvider for GeminiProvider {
                     completion_tokens: u.candidates_token_count,
                     total_tokens: u.total_token_count,
                 }),
+                tool_use: None, // Gemini provider doesn't support tool calling yet
             })
         } else {
             Err("No candidates returned from Gemini API".into())
@@ -574,6 +575,7 @@ impl AIProvider for GeminiProvider {
                                         result = Some(Ok(StreamingChunk {
                                             content: Some(content),
                                             finish_reason: candidate.finish_reason,
+                                            tool_use: None,
                                         }));
                                         break;
                                     }
@@ -591,6 +593,7 @@ impl AIProvider for GeminiProvider {
                     result.unwrap_or(Ok(StreamingChunk {
                         content: None,
                         finish_reason: None,
+                        tool_use: None,
                     }))
                 }
                 Err(e) => Err(Box::new(e) as Box<dyn std::error::Error + Send + Sync>),

@@ -7,7 +7,7 @@ use uuid::Uuid;
 // Re-export chat-related structs from models/chat
 pub use crate::database::models::chat::{
     AIProviderChatResponse as ChatResponse, ChatMessage, ChatRequest, ContentPart, FileReference,
-    MessageContent, StreamingChunk, Usage,
+    MessageContent, StreamingChunk, ToolDefinition, ToolUse, Usage,
 };
 
 pub type StreamingResponse = Pin<

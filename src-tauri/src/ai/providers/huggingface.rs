@@ -573,6 +573,7 @@ impl AIProvider for HuggingFaceProvider {
                     completion_tokens: u.completion_tokens,
                     total_tokens: u.total_tokens,
                 }),
+                tool_use: None, // HuggingFace provider doesn't support tool calling yet
             })
         } else {
             Err("No choices returned from Hugging Face API".into())
@@ -625,6 +626,7 @@ impl AIProvider for HuggingFaceProvider {
                                         result = Some(Ok(StreamingChunk {
                                             content: choice.delta.content,
                                             finish_reason: choice.finish_reason,
+                                            tool_use: None,
                                         }));
                                         break;
                                     }
@@ -642,6 +644,7 @@ impl AIProvider for HuggingFaceProvider {
                     result.unwrap_or(Ok(StreamingChunk {
                         content: None,
                         finish_reason: None,
+                        tool_use: None,
                     }))
                 }
                 Err(e) => Err(Box::new(e) as Box<dyn std::error::Error + Send + Sync>),

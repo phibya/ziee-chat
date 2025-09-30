@@ -116,6 +116,7 @@ export interface ChatMessageRequest {
   assistant_id: string
   content: string
   conversation_id: string
+  enabled_tools?: EnabledMCPTool[]
   file_ids?: string[]
   model_id: string
 }
@@ -436,6 +437,11 @@ export interface DownloadTokenParams {
 export interface DownloadTokenResponse {
   expires_at: string
   token: string
+}
+
+export interface EnabledMCPTool {
+  name: string
+  server_id: string
 }
 
 export interface EngineInfo {

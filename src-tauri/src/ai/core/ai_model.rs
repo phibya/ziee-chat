@@ -4,8 +4,8 @@ use uuid::Uuid;
 
 use crate::database::models::model::{ModelCapabilities, ModelParameters};
 use super::providers::{
-    ChatMessage, ChatResponse, StreamingResponse, 
-    EmbeddingsResponse, EmbeddingsInput
+    ChatMessage, ChatResponse, StreamingResponse,
+    EmbeddingsResponse, EmbeddingsInput, ToolDefinition
 };
 
 /// Simplified chat request without model-specific fields
@@ -14,6 +14,7 @@ use super::providers::{
 pub struct SimplifiedChatRequest {
     pub messages: Vec<ChatMessage>,
     pub stream: bool,
+    pub tools: Option<Vec<ToolDefinition>>, // Optional tools to send to AI
 }
 
 /// Simplified embeddings request without model-specific fields  

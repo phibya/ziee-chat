@@ -82,18 +82,18 @@ pub async fn get_user_accessible_tools(user_id: Uuid) -> Result<Vec<MCPToolWithS
     let tools = sqlx::query_as!(
         MCPToolWithServer,
         r#"
-        SELECT DISTINCT
+        SELECT
             t.id, t.server_id, t.tool_name, t.tool_description, t.input_schema,
             t.discovered_at, t.last_used_at, t.usage_count,
-            s.name as "server_name!", s.display_name as "server_display_name!",
-            s.is_system, s.transport_type::TEXT as "transport_type!",
-            ga.auto_approve as "global_auto_approve",
-            ga.expires_at as "global_approval_expires_at",
-            ga.notes as "global_approval_notes"
+            s.name as "server_name!",
+            s.display_name as "server_display_name!",
+            s.is_system as "is_system!",
+            s.transport_type::TEXT as "transport_type!",
+            ga.auto_approve as "global_auto_approve?: bool",
+            ga.expires_at as "global_approval_expires_at?",
+            ga.notes as "global_approval_notes?"
         FROM mcp_tools_cache t
-        JOIN mcp_servers s ON t.server_id = s.id
-        LEFT JOIN user_group_mcp_servers ugms ON s.id = ugms.server_id
-        LEFT JOIN user_group_memberships ugm ON ugms.group_id = ugm.group_id
+        INNER JOIN mcp_servers s ON t.server_id = s.id
         LEFT JOIN mcp_tool_approvals ga ON (
             t.server_id = ga.server_id
             AND t.tool_name = ga.tool_name
@@ -102,11 +102,20 @@ pub async fn get_user_accessible_tools(user_id: Uuid) -> Result<Vec<MCPToolWithS
             AND ga.approved = true
             AND (ga.expires_at IS NULL OR ga.expires_at > NOW())
         )
-        WHERE
+        WHERE (
             -- User's own servers
             s.user_id = $1
             -- OR accessible system servers through group membership
-            OR (s.is_system = true AND ugm.user_id = $1)
+            OR (
+                s.is_system = true
+                AND EXISTS (
+                    SELECT 1
+                    FROM user_group_mcp_servers ugms
+                    INNER JOIN user_group_memberships ugm ON ugms.group_id = ugm.group_id
+                    WHERE ugms.server_id = s.id AND ugm.user_id = $1
+                )
+            )
+        )
         ORDER BY s.display_name ASC, t.tool_name ASC
         "#,
         user_id
@@ -226,6 +235,32 @@ pub async fn clear_tools_cache_for_server(server_id: Uuid) -> Result<(), sqlx::E
         .await?;
 
     Ok(())
+}
+
+/// Get a specific tool by server_id and tool name
+pub async fn get_tool_by_server_and_name(
+    server_id: Uuid,
+    tool_name: &str,
+) -> Result<Option<MCPTool>, sqlx::Error> {
+    let pool = get_database_pool()?;
+    let pool = pool.as_ref();
+
+    let tool = sqlx::query_as!(
+        MCPTool,
+        r#"
+        SELECT
+            id, server_id, tool_name, tool_description, input_schema,
+            discovered_at, last_used_at, usage_count
+        FROM mcp_tools_cache
+        WHERE server_id = $1 AND tool_name = $2
+        "#,
+        server_id,
+        tool_name
+    )
+    .fetch_optional(pool)
+    .await?;
+
+    Ok(tool)
 }
 
 /// Get tool statistics for admin dashboard

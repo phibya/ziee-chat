@@ -7,10 +7,14 @@ import {
   Flex,
   Form,
   Input,
+  Modal,
   Select,
   theme,
   Typography,
   Upload,
+  Switch,
+  Tag,
+  Collapse,
 } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -19,6 +23,7 @@ import {
   RobotOutlined,
   SendOutlined,
   SettingOutlined,
+  ToolOutlined,
 } from '@ant-design/icons'
 import {
   addNewConversationToList,
@@ -87,6 +92,49 @@ export const ChatInput = function ChatInput({
   const { assistants } = Stores.Assistants
   const { providers, modelsByProvider } = Stores.Providers
   const { user } = Stores.Auth
+  const { servers, tools } = Stores.MCP
+
+  // Tool selection state
+  const [isToolModalVisible, setIsToolModalVisible] = useState(false)
+  const [selectedTools, setSelectedTools] = useState<
+    Array<{ server_id: string; name: string }>
+  >([])
+  const [expandedDescriptions, setExpandedDescriptions] = useState<Set<string>>(
+    new Set(),
+  )
+
+  // Get tools from enabled and active servers only
+  const availableTools = useMemo(() => {
+    const enabledActiveServers = servers.filter(
+      server => server.enabled && server.is_active,
+    )
+    return tools.filter(tool =>
+      enabledActiveServers.some(server => server.id === tool.server_id),
+    )
+  }, [servers, tools])
+
+  // Group tools by server
+  const toolsByServer = useMemo(() => {
+    const grouped = new Map<string, typeof availableTools>()
+    availableTools.forEach(tool => {
+      const serverTools = grouped.get(tool.server_id) || []
+      serverTools.push(tool)
+      grouped.set(tool.server_id, serverTools)
+    })
+    return grouped
+  }, [availableTools])
+
+  // Initialize all tools as selected when available tools change
+  useEffect(() => {
+    if (availableTools.length > 0 && selectedTools.length === 0) {
+      setSelectedTools(
+        availableTools.map(tool => ({
+          server_id: tool.server_id,
+          name: tool.tool_name,
+        })),
+      )
+    }
+  }, [availableTools])
 
   // ResizeObserver to listen to container width changes for UI breakpoints
   useEffect(() => {
@@ -276,6 +324,7 @@ export const ChatInput = function ChatInput({
           modelId: selectedModel.split(':')[1],
           content: messageToSend,
           fileIds: [...files.keys(), ...newFiles.keys()],
+          enabledTools: selectedTools.length > 0 ? selectedTools : undefined,
         })
         onDoneEditing?.() // Close the input after editing
       } catch (error) {
@@ -291,6 +340,7 @@ export const ChatInput = function ChatInput({
       assistantId: selectedAssistant,
       modelId: selectedModel.split(':')[1],
       fileIds: [...files.keys(), ...newFiles.keys()],
+      enabledTools: selectedTools.length > 0 ? selectedTools : undefined,
     }
 
     let newFilesBackup = new Map(newFiles) // Backup newFiles before clearing
@@ -461,26 +511,42 @@ export const ChatInput = function ChatInput({
                   </Form.Item>
                 </div>
                 <div className={`w-full flex justify-between gap-0`}>
-                  <Upload
-                    multiple
-                    beforeUpload={(_, fileList) => {
-                      if (fileList) {
-                        handleFileUpload(fileList)?.catch?.(error => {
-                          console.error('Failed to upload files:', error)
-                        })
-                      }
-                      return false
-                    }}
-                    showUploadList={false}
-                  >
-                    <Button
-                      type="default"
-                      disabled={isDisabled}
-                      title="Add files"
+                  <div className="flex gap-1">
+                    <Upload
+                      multiple
+                      beforeUpload={(_, fileList) => {
+                        if (fileList) {
+                          handleFileUpload(fileList)?.catch?.(error => {
+                            console.error('Failed to upload files:', error)
+                          })
+                        }
+                        return false
+                      }}
+                      showUploadList={false}
                     >
-                      <BsFileEarmarkPlus />
-                    </Button>
-                  </Upload>
+                      <Button
+                        type="default"
+                        disabled={isDisabled}
+                        title="Add files"
+                      >
+                        <BsFileEarmarkPlus />
+                      </Button>
+                    </Upload>
+
+                    {availableTools.length > 0 && (
+                      <Button
+                        type={selectedTools.length > 0 ? 'primary' : 'default'}
+                        disabled={isDisabled}
+                        title="Select MCP tools"
+                        onClick={() => setIsToolModalVisible(true)}
+                      >
+                        <ToolOutlined />
+                        {selectedTools.length > 0 && (
+                          <span className="ml-1">{selectedTools.length}</span>
+                        )}
+                      </Button>
+                    )}
+                  </div>
 
                   <div className={'flex items-center gap-[6px]'}>
                     <Form.Item name="assistant" noStyle>
@@ -621,6 +687,188 @@ export const ChatInput = function ChatInput({
           </Form>
         </PermissionGuard>
       </Card>
+
+      {/* MCP Tools Selection Modal */}
+      <Modal
+        title="Select MCP Tools"
+        open={isToolModalVisible}
+        onOk={() => setIsToolModalVisible(false)}
+        onCancel={() => setIsToolModalVisible(false)}
+        width={700}
+      >
+        <div className="max-h-[60vh] overflow-y-auto">
+          <Collapse
+            items={Array.from(toolsByServer.entries())
+              .map(([serverId, serverTools]) => {
+                const server = servers.find(s => s.id === serverId)
+                if (!server) return null
+
+                const allServerToolsSelected = serverTools.every(tool =>
+                  selectedTools.some(
+                    t => t.server_id === serverId && t.name === tool.tool_name,
+                  ),
+                )
+
+                return {
+                  key: serverId,
+                  label: (
+                    <Flex
+                      justify="space-between"
+                      align="center"
+                      className="w-full"
+                    >
+                      <Flex gap={8} align="center">
+                        <Switch
+                          size="small"
+                          checked={allServerToolsSelected}
+                          onClick={(_, e) => e.stopPropagation()}
+                          onChange={checked => {
+                            if (checked) {
+                              const serverToolsToAdd = serverTools
+                                .filter(
+                                  tool =>
+                                    !selectedTools.some(
+                                      t =>
+                                        t.server_id === serverId &&
+                                        t.name === tool.tool_name,
+                                    ),
+                                )
+                                .map(tool => ({
+                                  server_id: serverId,
+                                  name: tool.tool_name,
+                                }))
+                              setSelectedTools([
+                                ...selectedTools,
+                                ...serverToolsToAdd,
+                              ])
+                            } else {
+                              setSelectedTools(
+                                selectedTools.filter(
+                                  t => t.server_id !== serverId,
+                                ),
+                              )
+                            }
+                          }}
+                        />
+                        <Text strong>{server.display_name}</Text>
+                        <Tag color={server.is_system ? 'blue' : 'default'}>
+                          {server.is_system ? 'System' : 'User'}
+                        </Tag>
+                      </Flex>
+                      <Text type="secondary" className="text-xs">
+                        {serverTools.length} tool
+                        {serverTools.length !== 1 ? 's' : ''}
+                      </Text>
+                    </Flex>
+                  ),
+                  children: (
+                    <div className="flex flex-col gap-2">
+                      {serverTools.map(tool => {
+                        const isSelected = selectedTools.some(
+                          t =>
+                            t.server_id === serverId &&
+                            t.name === tool.tool_name,
+                        )
+                        const toolKey = `${serverId}-${tool.tool_name}`
+                        const isExpanded = expandedDescriptions.has(toolKey)
+                        const hasDescription =
+                          tool.tool_description &&
+                          tool.tool_description.length > 0
+
+                        return (
+                          <div key={toolKey} className="flex items-start gap-2">
+                            <Switch
+                              size="small"
+                              checked={isSelected}
+                              onChange={checked => {
+                                if (checked) {
+                                  setSelectedTools([
+                                    ...selectedTools,
+                                    {
+                                      server_id: serverId,
+                                      name: tool.tool_name,
+                                    },
+                                  ])
+                                } else {
+                                  setSelectedTools(
+                                    selectedTools.filter(
+                                      t =>
+                                        !(
+                                          t.server_id === serverId &&
+                                          t.name === tool.tool_name
+                                        ),
+                                    ),
+                                  )
+                                }
+                              }}
+                            />
+                            <div className="flex-1 flex flex-col gap-1 min-w-0">
+                              <Text>{tool.tool_name}</Text>
+                              {hasDescription && (
+                                <div className="flex items-start gap-1">
+                                  <Text
+                                    type="secondary"
+                                    className="text-xs flex-1"
+                                    style={{
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                      display: isExpanded
+                                        ? 'block'
+                                        : '-webkit-box',
+                                      WebkitLineClamp: isExpanded ? 'unset' : 1,
+                                      WebkitBoxOrient: 'vertical',
+                                      wordBreak: 'break-word',
+                                    }}
+                                  >
+                                    {tool.tool_description}
+                                  </Text>
+                                  <Button
+                                    type="link"
+                                    size="small"
+                                    className="!p-0 !h-auto text-xs flex-shrink-0"
+                                    onClick={e => {
+                                      e.stopPropagation()
+                                      setExpandedDescriptions(prev => {
+                                        const newSet = new Set(prev)
+                                        if (isExpanded) {
+                                          newSet.delete(toolKey)
+                                        } else {
+                                          newSet.add(toolKey)
+                                        }
+                                        return newSet
+                                      })
+                                    }}
+                                  >
+                                    {isExpanded ? 'Show less' : 'Show more'}
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ),
+                }
+              })
+              .filter(
+                (
+                  item,
+                ): item is {
+                  key: string
+                  label: JSX.Element
+                  children: JSX.Element
+                } => item !== null,
+              )}
+          />
+
+          {availableTools.length === 0 && (
+            <Text type="secondary" className="text-center py-4 block">
+              No tools available from enabled and active MCP servers
+            </Text>
+          )}
+        </div>
+      </Modal>
     </div>
   )
 }

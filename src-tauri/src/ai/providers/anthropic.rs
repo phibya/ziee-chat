@@ -37,6 +37,10 @@ struct AnthropicContent {
     #[serde(rename = "type")]
     content_type: String,
     text: Option<String>,
+    // Tool use fields
+    id: Option<String>,
+    name: Option<String>,
+    input: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -50,7 +54,19 @@ struct AnthropicStreamResponse {
     #[serde(rename = "type")]
     event_type: String,
     delta: Option<AnthropicDelta>,
-    content_block: Option<AnthropicContent>,
+    content_block: Option<AnthropicContentBlock>,
+    index: Option<u32>,
+}
+
+#[derive(Debug, Deserialize)]
+struct AnthropicContentBlock {
+    #[serde(rename = "type")]
+    content_type: String,
+    text: Option<String>,
+    // Tool use fields
+    id: Option<String>,
+    name: Option<String>,
+    input: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -395,6 +411,21 @@ impl AnthropicProvider {
             body["system"] = json!(system_message);
         }
 
+        // Add tools if provided
+        if let Some(tools) = &request.tools {
+            let anthropic_tools: Vec<Value> = tools
+                .iter()
+                .map(|tool| {
+                    json!({
+                        "name": tool.name,
+                        "description": tool.description,
+                        "input_schema": tool.input_schema
+                    })
+                })
+                .collect();
+            body["tools"] = json!(anthropic_tools);
+        }
+
         if let Some(parameters) = &request.parameters {
             if let Some(temperature) = parameters.temperature {
                 body["temperature"] = json!(temperature);
@@ -444,6 +475,19 @@ impl AIProvider for AnthropicProvider {
 
         let anthropic_response: AnthropicResponse = response.json().await?;
 
+        // Check for tool use
+        let tool_use = anthropic_response
+            .content
+            .iter()
+            .find(|c| c.content_type == "tool_use")
+            .and_then(|c| {
+                Some(crate::ai::core::providers::ToolUse {
+                    id: c.id.clone()?,
+                    name: c.name.clone()?,
+                    input: c.input.clone()?,
+                })
+            });
+
         let content = anthropic_response
             .content
             .into_iter()
@@ -461,6 +505,7 @@ impl AIProvider for AnthropicProvider {
             content,
             finish_reason: anthropic_response.stop_reason,
             usage,
+            tool_use,
         })
     }
 
@@ -496,6 +541,7 @@ impl AIProvider for AnthropicProvider {
 
         // Use a shared buffer to handle partial SSE chunks
         let buffer = Arc::new(Mutex::new(String::new()));
+        let current_tool_use = Arc::new(Mutex::new(None::<crate::ai::core::providers::ToolUse>));
 
         let stream = response.bytes_stream().map(move |result| {
             result.map_err(|e| e.into()).and_then(|bytes| {
@@ -520,13 +566,26 @@ impl AIProvider for AnthropicProvider {
                                 "content_block_start" => {
                                     // Handle initial content block if needed
                                     if let Some(content_block) = chunk.content_block {
-                                        if content_block.content_type == "text" {
-                                            if content_block.text.is_some() {
-                                                chunks.push(StreamingChunk {
-                                                    content: content_block.text,
-                                                    finish_reason: None,
+                                        match content_block.content_type.as_str() {
+                                            "text" => {
+                                                if content_block.text.is_some() {
+                                                    chunks.push(StreamingChunk {
+                                                        content: content_block.text,
+                                                        finish_reason: None,
+                                                        tool_use: None,
+                                                    });
+                                                }
+                                            }
+                                            "tool_use" => {
+                                                // Start collecting tool use
+                                                let mut tool_guard = current_tool_use.lock().unwrap();
+                                                *tool_guard = Some(crate::ai::core::providers::ToolUse {
+                                                    id: content_block.id.unwrap_or_default(),
+                                                    name: content_block.name.unwrap_or_default(),
+                                                    input: content_block.input.unwrap_or(serde_json::json!({})),
                                                 });
                                             }
+                                            _ => {}
                                         }
                                     }
                                 }
@@ -537,15 +596,28 @@ impl AIProvider for AnthropicProvider {
                                                 chunks.push(StreamingChunk {
                                                     content: delta.text,
                                                     finish_reason: delta.stop_reason,
+                                                    tool_use: None,
                                                 });
                                             }
                                         }
+                                    }
+                                }
+                                "content_block_stop" => {
+                                    // Send tool use if we have one
+                                    let mut tool_guard = current_tool_use.lock().unwrap();
+                                    if let Some(tool_use) = tool_guard.take() {
+                                        chunks.push(StreamingChunk {
+                                            content: None,
+                                            finish_reason: None,
+                                            tool_use: Some(tool_use),
+                                        });
                                     }
                                 }
                                 "message_stop" => {
                                     chunks.push(StreamingChunk {
                                         content: None,
                                         finish_reason: Some("stop".to_string()),
+                                        tool_use: None,
                                     });
                                     break;
                                 }
@@ -559,6 +631,7 @@ impl AIProvider for AnthropicProvider {
                 Ok(chunks.into_iter().next().unwrap_or(StreamingChunk {
                     content: None,
                     finish_reason: None,
+                    tool_use: None,
                 }))
             })
         });
