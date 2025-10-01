@@ -71,16 +71,9 @@ pub(super) async fn check_and_handle_pending_approval(
                 chat::check_tool_approval(conversation_id, server_id, &tool_name).await?;
 
             if !is_approved {
-                // Send approval request event and EXIT
-                let approval_event =
-                    SSEChatStreamEvent::ToolCallPendingApproval(ToolCallPendingApprovalData {
-                        message_content_id: content.id,
-                        message_id: last_msg.id,
-                        tool_name: tool_name.clone(),
-                        server_id,
-                        arguments: arguments.clone(),
-                    });
-                let _ = tx.send(Ok(approval_event.into()));
+                // Not approved yet - stop and wait for approval
+                // Note: The approval event was already sent when the tool was first requested
+                // by handle_tool_request(), so we don't send it again here
                 return Ok((true, false)); // Needs approval, stop loop
             }
 
@@ -121,9 +114,19 @@ pub(super) async fn check_and_handle_pending_approval(
 pub(super) async fn handle_tool_request(
     tool_request: ToolCallRequest,
     message_id: Uuid,
+    conversation_id: Uuid,
     tx: &tokio::sync::mpsc::UnboundedSender<Result<Event, Infallible>>,
 ) -> bool {
-    // Save ToolCallPendingApproval to DB
+    // Check if tool is already approved in the database
+    let is_already_approved = match chat::check_tool_approval(conversation_id, tool_request.server_id, &tool_request.tool_name).await {
+        Ok(approved) => approved,
+        Err(e) => {
+            eprintln!("Warning: Failed to check tool approval: {}", e);
+            false // Proceed with normal flow on error
+        }
+    };
+
+    // Save ToolCallPendingApproval to DB (always save, regardless of approval status)
     let pending_content = MessageContentData::ToolCallPendingApproval {
         tool_name: tool_request.tool_name.clone(),
         server_id: tool_request.server_id,
@@ -133,25 +136,29 @@ pub(super) async fn handle_tool_request(
 
     match chat::save_pending_tool_approval_content(message_id, pending_content).await {
         Ok(message_content_id) => {
-            // Send NewMessageContent event
-            let new_content_event = SSEChatStreamEvent::NewMessageContent(NewMessageContentData {
-                message_content_id,
-                message_id,
-            });
-            let _ = tx.send(Ok(new_content_event.into()));
-
-            // Send ToolCallPendingApproval event (for UI modal) - BEFORE ToolCall
-            let approval_event =
-                SSEChatStreamEvent::ToolCallPendingApproval(ToolCallPendingApprovalData {
+            // Only send approval events if tool is not already approved
+            if !is_already_approved {
+                // Send NewMessageContent event
+                let new_content_event = SSEChatStreamEvent::NewMessageContent(NewMessageContentData {
                     message_content_id,
                     message_id,
-                    tool_name: tool_request.tool_name,
-                    server_id: tool_request.server_id,
-                    arguments: tool_request.arguments,
                 });
-            let _ = tx.send(Ok(approval_event.into()));
+                let _ = tx.send(Ok(new_content_event.into()));
+
+                // Send ToolCallPendingApproval event (for UI modal) - BEFORE ToolCall
+                let approval_event =
+                    SSEChatStreamEvent::ToolCallPendingApproval(ToolCallPendingApprovalData {
+                        message_content_id,
+                        message_id,
+                        tool_name: tool_request.tool_name,
+                        server_id: tool_request.server_id,
+                        arguments: tool_request.arguments,
+                    });
+                let _ = tx.send(Ok(approval_event.into()));
+            }
 
             // NOTE: ToolCall event is sent AFTER approval in execute_tool_and_save_result
+            // Tool execution happens in the next iteration via check_and_handle_pending_approval
             true
         }
         Err(e) => {
@@ -206,23 +213,61 @@ async fn execute_tool_and_save_result(
     });
     let _ = tx.send(Ok(tool_call_event.into()));
 
-    // MOCK EXECUTION - Return mock result
-    // TODO: Replace with actual MCP tool execution
-    let mock_result = serde_json::json!({
-        "status": "success",
-        "message": format!("Mock execution of tool: {}", tool_name),
-        "tool_name": tool_name,
-        "server_id": server_id,
-        "arguments": arguments,
-        "note": "This is a mock result. Actual MCP execution will be implemented later."
+    // Execute tool via MCP
+    let start_time = std::time::Instant::now();
+
+    let execution_result = crate::mcp::tool_executor::execute_mcp_tool(
+        server_id,
+        tool_name.to_string(),
+        arguments.clone(),
+    )
+    .await;
+
+    let duration_ms = start_time.elapsed().as_millis() as i64;
+
+    // Handle result
+    let (result, success, error_message) = match execution_result {
+        Ok(exec_result) => {
+            if exec_result.success {
+                tracing::info!(
+                    "Tool '{}' executed successfully in {}ms",
+                    tool_name,
+                    exec_result.duration_ms
+                );
+                (exec_result.result, true, None)
+            } else {
+                tracing::error!(
+                    "Tool '{}' execution failed: {:?}",
+                    tool_name,
+                    exec_result.error_message
+                );
+                (None, false, exec_result.error_message)
+            }
+        }
+        Err(e) => {
+            tracing::error!("Tool '{}' execution error: {}", tool_name, e);
+            (
+                None,
+                false,
+                Some(format!("Tool execution failed: {}", e)),
+            )
+        }
+    };
+
+    // Prepare result value for both database and SSE event
+    let result_value = result.clone().unwrap_or_else(|| {
+        serde_json::json!({
+            "error": "execution_failed",
+            "duration_ms": duration_ms
+        })
     });
 
     // Save ToolResult content to message
     let result_content = MessageContentData::ToolResult {
         call_id: call_id.clone(),
-        result: mock_result.clone(),
-        success: true,
-        error_message: None,
+        result: result_value.clone(),
+        success,
+        error_message: error_message.clone(),
     };
 
     // Save to database using query function and get the content_id
@@ -240,9 +285,9 @@ async fn execute_tool_and_save_result(
         message_content_id,
         message_id,
         call_id,
-        result: mock_result,
-        success: true,
-        error_message: None,
+        result: result_value,
+        success,
+        error_message,
     });
     let _ = tx.send(Ok(event.into()));
 

@@ -12,7 +12,6 @@ pub struct MCPHttpTransport {
     client: reqwest::Client,
     base_url: String,
     initialized: Arc<Mutex<bool>>,
-    request_id_counter: Arc<Mutex<u64>>,
 }
 
 impl MCPHttpTransport {
@@ -36,26 +35,23 @@ impl MCPHttpTransport {
             client: reqwest::Client::new(),
             base_url,
             initialized: Arc::new(Mutex::new(false)),
-            request_id_counter: Arc::new(Mutex::new(0)),
         })
     }
 
-    async fn get_next_request_id(&self) -> String {
-        let mut counter = self.request_id_counter.lock().await;
-        *counter += 1;
-        format!("http-{}", *counter)
-    }
-
-    async fn send_mcp_request(&self, request: MCPRequest) -> Result<MCPResponse, Box<dyn std::error::Error + Send + Sync>> {
+    /// Internal method to send MCP request without initialization check
+    async fn send_request_internal(&self, request: MCPRequest) -> Result<MCPResponse, Box<dyn std::error::Error + Send + Sync>> {
         let response = self.client
             .post(&self.base_url)
             .json(&request)
+            .timeout(std::time::Duration::from_secs(30))
             .send()
             .await
             .map_err(|e| format!("HTTP request failed: {}", e))?;
 
         if !response.status().is_success() {
-            return Err(format!("HTTP error: {}", response.status()).into());
+            let status = response.status();
+            let error_body = response.text().await.unwrap_or_default();
+            return Err(format!("HTTP error {}: {}", status, error_body).into());
         }
 
         let mcp_response: MCPResponse = response
@@ -66,7 +62,17 @@ impl MCPHttpTransport {
         Ok(mcp_response)
     }
 
+    pub async fn send_mcp_request(&self, request: MCPRequest) -> Result<MCPResponse, Box<dyn std::error::Error + Send + Sync>> {
+        // Check if initialized
+        if !*self.initialized.lock().await {
+            return Err("MCP session not initialized".into());
+        }
+
+        self.send_request_internal(request).await
+    }
+
     async fn initialize_mcp_session(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        // Step 1: Send initialize request
         let init_request = MCPRequest {
             jsonrpc: "2.0".to_string(),
             id: Some(serde_json::Value::String("init".to_string())),
@@ -86,11 +92,24 @@ impl MCPHttpTransport {
             })),
         };
 
-        let response = self.send_mcp_request(init_request).await?;
+        // Use internal method to bypass initialization check during initialization
+        let response = self.send_request_internal(init_request).await?;
 
         if response.error.is_some() {
             return Err(format!("MCP initialization failed: {:?}", response.error).into());
         }
+
+        // Step 2: Send initialized notification to complete handshake
+        // This is required by MCP protocol - must send this after receiving initialize response
+        let initialized_notification = MCPRequest {
+            jsonrpc: "2.0".to_string(),
+            id: None, // Notifications have no id
+            method: "notifications/initialized".to_string(),
+            params: None,
+        };
+
+        // Send notification (no response expected)
+        let _ = self.send_request_internal(initialized_notification).await;
 
         *self.initialized.lock().await = true;
         println!("[{}] MCP HTTP session initialized", self.server.name);
@@ -127,32 +146,30 @@ impl MCPTransport for MCPHttpTransport {
     }
 
     async fn is_healthy(&self) -> bool {
-        if !*self.initialized.lock().await {
-            return false;
+        // For HTTP transport (external servers), check if server is reachable
+        // The server is running independently, so we just verify connectivity
+
+        // Try the MCP endpoint first
+        let mcp_check = self.client
+            .get(&self.base_url)
+            .timeout(std::time::Duration::from_secs(5))
+            .send()
+            .await;
+
+        if mcp_check.is_ok() {
+            return true; // Server is reachable at MCP endpoint
         }
 
-        // Send a ping request to check if the server is still responsive
-        let ping_request = MCPRequest {
-            jsonrpc: "2.0".to_string(),
-            id: Some(serde_json::Value::String(self.get_next_request_id().await)),
-            method: "ping".to_string(),
-            params: None,
-        };
+        // Fallback: try health endpoint
+        let health_check = self.client
+            .get(&format!("{}/health", self.base_url.trim_end_matches("/mcp")))
+            .timeout(std::time::Duration::from_secs(5))
+            .send()
+            .await;
 
-        match self.send_mcp_request(ping_request).await {
-            Ok(_) => true,
-            Err(_) => {
-                // If ping fails, try a simpler health check
-                let health_check = self.client
-                    .get(&format!("{}/health", self.base_url.trim_end_matches("/mcp")))
-                    .send()
-                    .await;
-
-                match health_check {
-                    Ok(response) => response.status().is_success(),
-                    Err(_) => false,
-                }
-            }
+        match health_check {
+            Ok(response) => response.status().is_success(),
+            Err(_) => false, // Server is not reachable
         }
     }
 }

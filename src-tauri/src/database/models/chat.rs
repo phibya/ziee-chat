@@ -1,6 +1,5 @@
 use crate::database::macros::{impl_json_option_from, impl_string_to_enum, make_transparent};
 use crate::database::models::File;
-use crate::database::types::JsonOption;
 use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -280,7 +279,12 @@ pub struct MessageRow {
     pub edit_count: i32,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
-    pub metadata: serde_json::Value,
+    pub metadata: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct MessageMetadataStruct {
+    pub enabled_tools: Option<Vec<crate::utils::chat::EnabledMCPTool>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -292,7 +296,7 @@ pub struct Message {
     pub edit_count: i32,          // Number of times this message lineage has been edited
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
-    pub metadata: JsonOption<Vec<MessageMetadata>>,
+    pub metadata: Option<MessageMetadataStruct>,
     pub files: MessageFiles,
     pub contents: Vec<MessageContentItem>, // NEW: structured content
 }
@@ -364,6 +368,7 @@ pub struct SaveMessageRequest {
     pub role: String,
     pub model_id: Uuid,
     pub file_ids: Option<Vec<Uuid>>,
+    pub enabled_tools: Option<Vec<crate::utils::chat::EnabledMCPTool>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

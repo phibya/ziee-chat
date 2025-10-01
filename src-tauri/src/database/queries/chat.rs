@@ -4,7 +4,6 @@ use crate::database::models::{
     EditMessageRequest, EditMessageResponse, Message, MessageBranch, MessageContentItem,
     MessageContentData, MessageContentRow, MessageContentType, MessageRow, SaveMessageRequest, UpdateConversationRequest,
 };
-use crate::database::types::JsonOption;
 use sqlx::Error;
 use std::collections::HashMap;
 use uuid::Uuid;
@@ -466,14 +465,23 @@ pub async fn save_message(
     // Start transaction for atomic message + branch_message creation
     let mut tx = pool.begin().await?;
 
+    // Prepare metadata
+    let metadata_json = if let Some(enabled_tools) = &request.enabled_tools {
+        Some(serde_json::to_value(crate::database::models::chat::MessageMetadataStruct {
+            enabled_tools: Some(enabled_tools.clone()),
+        }).unwrap())
+    } else {
+        None
+    };
+
     // Insert the message (WITHOUT content field)
     sqlx::query!(
         r#"
         INSERT INTO messages (
             id, conversation_id, role,
             originated_from_id, edit_count,
-            created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+            created_at, updated_at, metadata
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         "#,
         message_id,
         request.conversation_id,
@@ -481,7 +489,8 @@ pub async fn save_message(
         message_id,
         0,
         now,
-        now
+        now,
+        metadata_json
     )
     .execute(&mut *tx)
     .await?;
@@ -574,7 +583,9 @@ pub async fn save_message(
         edit_count: 0,
         created_at: now,
         updated_at: now,
-        metadata: JsonOption::default(),
+        metadata: request.enabled_tools.map(|tools| crate::database::models::chat::MessageMetadataStruct {
+            enabled_tools: Some(tools),
+        }),
         files: files.into(),
         contents: vec![content_item],
     })
@@ -606,7 +617,7 @@ pub async fn get_conversation_messages(
             m.id, m.conversation_id, m.role,
             m.originated_from_id, m.edit_count,
             m.created_at, m.updated_at,
-            '{}'::jsonb as metadata
+            m.metadata
         FROM messages m
         INNER JOIN branch_messages bm ON m.id = bm.message_id
         WHERE bm.branch_id = $1
@@ -637,8 +648,8 @@ pub async fn get_conversation_messages(
             .cloned()
             .unwrap_or_default();
 
-        let metadata: JsonOption<Vec<crate::database::models::chat::MessageMetadata>> =
-            serde_json::from_value(message_row.metadata).unwrap_or_default();
+        let metadata: Option<crate::database::models::chat::MessageMetadataStruct> =
+            message_row.metadata.and_then(|v| serde_json::from_value(v).ok());
 
         messages.push(Message {
             id: message_row.id,
@@ -694,7 +705,7 @@ pub async fn get_conversation_messages_by_branch(
             m.id, m.conversation_id, m.role,
             m.originated_from_id, m.edit_count,
             m.created_at, m.updated_at,
-            '{}'::jsonb as metadata
+            m.metadata
         FROM messages m
         INNER JOIN branch_messages bm ON m.id = bm.message_id
         WHERE bm.branch_id = $1
@@ -725,8 +736,8 @@ pub async fn get_conversation_messages_by_branch(
             .cloned()
             .unwrap_or_default();
 
-        let metadata: JsonOption<Vec<crate::database::models::chat::MessageMetadata>> =
-            serde_json::from_value(message_row.metadata).unwrap_or_default();
+        let metadata: Option<crate::database::models::chat::MessageMetadataStruct> =
+            message_row.metadata.and_then(|v| serde_json::from_value(v).ok());
 
         messages.push(Message {
             id: message_row.id,
@@ -973,7 +984,7 @@ pub async fn edit_message(
         edit_count: edit_count + 1, // Incremented count
         created_at: original_created_at,
         updated_at: now,
-        metadata: JsonOption::default(),
+        metadata: None,
         files: files.into(),
         contents: vec![content_item],
     };

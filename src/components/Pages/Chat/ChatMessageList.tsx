@@ -1,6 +1,6 @@
 import { memo, useEffect, useRef } from 'react'
 import { Flex, Typography } from 'antd'
-import { MessageOutlined } from '@ant-design/icons'
+import { LoadingOutlined, MessageOutlined } from '@ant-design/icons'
 import { ChatMessage } from './ChatMessage'
 import { useChatStore } from '../../../store'
 
@@ -20,8 +20,7 @@ const createTextContent = (text: string) => [
 const { Text } = Typography
 
 export const ChatMessageList = memo(function ChatMessageList() {
-  const { messages, error, loading } =
-    useChatStore()
+  const { messages, error, loading, sending, isStreaming } = useChatStore()
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -61,6 +60,12 @@ export const ChatMessageList = memo(function ChatMessageList() {
           }}
         />
       )}
+      {(sending || isStreaming) && (
+        <div className={'w-full h-20 mt-3'}>
+          <LoadingOutlined spin className={'text-xl'} />
+        </div>
+      )}
+
       <div ref={messagesEndRef} />
     </Flex>
   )

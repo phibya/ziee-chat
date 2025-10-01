@@ -19,7 +19,6 @@ pub struct MCPSSETransport {
     messages_url: String,
     session_id: String,
     initialized: Arc<Mutex<bool>>,
-    request_id_counter: Arc<Mutex<u64>>,
     response_handlers: Arc<Mutex<HashMap<String, oneshot::Sender<MCPResponse>>>>,
     notification_sender: Arc<broadcast::Sender<MCPNotification>>,
     sse_handle: Arc<Mutex<Option<tokio::task::JoinHandle<()>>>>,
@@ -51,20 +50,13 @@ impl MCPSSETransport {
             messages_url,
             session_id,
             initialized: Arc::new(Mutex::new(false)),
-            request_id_counter: Arc::new(Mutex::new(0)),
             response_handlers: Arc::new(Mutex::new(HashMap::new())),
             notification_sender: Arc::new(notification_sender),
             sse_handle: Arc::new(Mutex::new(None)),
         })
     }
 
-    async fn get_next_request_id(&self) -> String {
-        let mut counter = self.request_id_counter.lock().await;
-        *counter += 1;
-        format!("sse-{}", *counter)
-    }
-
-    async fn send_mcp_request(&self, request: MCPRequest) -> Result<MCPResponse, Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn send_mcp_request(&self, request: MCPRequest) -> Result<MCPResponse, Box<dyn std::error::Error + Send + Sync>> {
         let request_id = request.id.as_ref()
             .and_then(|id| id.as_str())
             .unwrap_or("unknown")
@@ -180,6 +172,7 @@ impl MCPSSETransport {
     }
 
     async fn initialize_mcp_session(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        // Step 1: Send initialize request
         let init_request = MCPRequest {
             jsonrpc: "2.0".to_string(),
             id: Some(serde_json::Value::String("init".to_string())),
@@ -204,6 +197,18 @@ impl MCPSSETransport {
         if response.error.is_some() {
             return Err(format!("MCP initialization failed: {:?}", response.error).into());
         }
+
+        // Step 2: Send initialized notification to complete handshake
+        // This is required by MCP protocol - must send this after receiving initialize response
+        let initialized_notification = MCPRequest {
+            jsonrpc: "2.0".to_string(),
+            id: None, // Notifications have no id
+            method: "notifications/initialized".to_string(),
+            params: None,
+        };
+
+        // Send notification (no response expected for notifications)
+        let _ = self.send_mcp_request(initialized_notification).await;
 
         *self.initialized.lock().await = true;
         println!("[{}] MCP SSE session initialized (session: {})", self.server.name, self.session_id);
@@ -253,30 +258,34 @@ impl MCPTransport for MCPSSETransport {
     }
 
     async fn is_healthy(&self) -> bool {
-        if !*self.initialized.lock().await {
-            return false;
+        // For SSE transport, first check if server is reachable
+        // Then verify SSE connection status
+
+        // Quick connectivity check - try to reach the base endpoint
+        let connectivity_check = self.client
+            .get(&self.base_url)
+            .timeout(std::time::Duration::from_secs(5))
+            .send()
+            .await;
+
+        if connectivity_check.is_err() {
+            return false; // Server is not reachable at all
         }
 
-        // Check if SSE handle is still running
+        // Server is reachable, now check if we have an active SSE connection
+        if !*self.initialized.lock().await {
+            return true; // Server is up but we haven't initialized yet - still healthy
+        }
+
+        // We're initialized, check if SSE handle is still running
         if let Some(handle) = self.sse_handle.lock().await.as_ref() {
             if handle.is_finished() {
-                return false;
+                return false; // SSE connection died
             }
         } else {
-            return false;
+            return false; // No SSE handle
         }
 
-        // Send a ping request to check if the server is still responsive
-        let ping_request = MCPRequest {
-            jsonrpc: "2.0".to_string(),
-            id: Some(serde_json::Value::String(self.get_next_request_id().await)),
-            method: "ping".to_string(),
-            params: None,
-        };
-
-        match self.send_mcp_request(ping_request).await {
-            Ok(_) => true,
-            Err(_) => false,
-        }
+        true // Server reachable and SSE connection active
     }
 }

@@ -75,7 +75,6 @@ export const ToolCallPendingApprovalContent = memo(
             model_id: conversation.model_id,
             assistant_id: conversation.assistant_id,
             file_ids: [],
-            enabled_tools: [],
             message_id: content.message_id,
           })
         }

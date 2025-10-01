@@ -60,6 +60,21 @@ pub(super) async fn stream_ai_response(
             }
         };
 
+    // If resuming from an existing message, load enabled_tools from its metadata
+    let mut request = request;
+    if request.message_id.is_some() && request.enabled_tools.is_none() {
+        if let Some(message_id) = request.message_id {
+            // Load the message to get its metadata
+            if let Ok(messages) = chat::get_conversation_messages(request.conversation_id, user_id).await {
+                if let Some(message) = messages.iter().find(|m| m.id == message_id) {
+                    if let Some(metadata) = &message.metadata {
+                        request.enabled_tools = metadata.enabled_tools.clone();
+                    }
+                }
+            }
+        }
+    }
+
     // Get the model provider configuration directly from model_id
     let provider = match get_provider_by_model_id(request.model_id).await {
         Ok(Some(provider)) => {
@@ -204,6 +219,7 @@ pub(super) async fn stream_ai_response(
             role: "assistant".to_string(),
             model_id: request.model_id,
             file_ids: None,
+            enabled_tools: request.enabled_tools.clone(),
         };
 
         match chat::save_message(assistant_message_req, user_id, active_branch_id).await {
@@ -385,7 +401,7 @@ pub(super) async fn execute_message_stream_loop(
     should_create_user_message: bool,
     resume_from_message_id: Option<Uuid>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    const MAX_ITERATIONS: usize = 1;
+    const MAX_ITERATIONS: usize = 5;
     let mut iteration = 0;
     let mut last_assistant_message_id: Option<Uuid> = resume_from_message_id;
     let is_resuming = resume_from_message_id.is_some();
@@ -394,9 +410,9 @@ pub(super) async fn execute_message_stream_loop(
         iteration += 1;
 
         // ----------------------------------------
-        // 1. Check last message for pending approval (only if resuming)
+        // 1. Check last message for pending approval (if resuming or after first iteration)
         // ----------------------------------------
-        if is_resuming {
+        if is_resuming || iteration > 1 {
             match check_and_handle_pending_approval(
                 request.conversation_id,
                 user_id,
@@ -432,6 +448,7 @@ pub(super) async fn execute_message_stream_loop(
                 role: "user".to_string(),
                 model_id: request.model_id,
                 file_ids: request.file_ids.clone(),
+                enabled_tools: request.enabled_tools.clone(),
             };
 
             match chat::save_message(user_message_req, user_id, None).await {
@@ -472,7 +489,7 @@ pub(super) async fn execute_message_stream_loop(
         // 4. Check if AI requests tool call
         // ----------------------------------------
         if let Some(tool_request) = result.tool_call_request {
-            if !handle_tool_request(tool_request, result.message_id, &tx).await {
+            if !handle_tool_request(tool_request, result.message_id, request.conversation_id, &tx).await {
                 // Failed to handle tool request, error already sent
                 return Err("Failed to handle tool request".into());
             }
