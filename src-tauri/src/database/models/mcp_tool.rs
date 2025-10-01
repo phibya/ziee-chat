@@ -132,6 +132,7 @@ pub struct CreateConversationApprovalRequest {
     pub approved: bool,
     pub expires_at: Option<DateTime<Utc>>,
     pub notes: Option<String>,
+    pub approval_message_content_id: Option<Uuid>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]

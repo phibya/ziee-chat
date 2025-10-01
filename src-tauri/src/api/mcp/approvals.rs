@@ -80,6 +80,32 @@ pub async fn create_conversation_approval(
         return Err((StatusCode::FORBIDDEN, AppError::forbidden("Access denied to MCP server")));
     }
 
+    // Update message content if approval_message_content_id is provided
+    if let Some(content_id) = request.approval_message_content_id {
+        use crate::database::queries;
+
+        // Update the message content to set is_approved field
+        sqlx::query!(
+            r#"
+            UPDATE message_contents
+            SET content = jsonb_set(content, '{is_approved}', $2::jsonb, true),
+                updated_at = NOW()
+            WHERE id = $1
+            "#,
+            content_id,
+            serde_json::json!(request.approved)
+        )
+        .execute(queries::get_database_pool().map_err(|e| {
+            tracing::error!("Failed to get database pool: {}", e);
+            (StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database error"))
+        })?.as_ref())
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to update message content: {}", e);
+            (StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database error"))
+        })?;
+    }
+
     // Create the approval
     let approval = mcp_tool_approvals::create_conversation_tool_approval(
         auth_user.user_id,

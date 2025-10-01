@@ -181,6 +181,7 @@ export interface CreateAssistantRequest {
 }
 
 export interface CreateConversationApprovalRequest {
+  approval_message_content_id?: string
   approved: boolean
   expires_at?: string
   notes?: string
@@ -895,6 +896,7 @@ export interface MessageContentDataToolCall {
 }
 export interface MessageContentDataToolCallPendingApproval {
   arguments: any
+  is_approved?: boolean | null
   server_id: string
   tool_name: string
 }

@@ -27,9 +27,15 @@ export const ToolCallPendingApprovalContent = memo(
     const [loading, setLoading] = useState<
       'once' | 'conversation' | 'deny' | null
     >(null)
+    const [isHidden, setIsHidden] = useState(false)
 
     const pendingData =
       content.content as MessageContentDataToolCallPendingApproval
+
+    // Hide if already approved or denied (is_approved is true or false, not null/undefined)
+    if (typeof pendingData.is_approved === 'boolean') {
+      return null
+    }
 
     const handleApprove = async (type: 'once' | 'conversation') => {
       if (!conversation) return
@@ -50,6 +56,7 @@ export const ToolCallPendingApprovalContent = memo(
             type === 'once'
               ? 'One-time approval'
               : 'Approved for this conversation (7 days)',
+          approval_message_content_id: content.id,
         })
 
         message.success(
@@ -57,6 +64,9 @@ export const ToolCallPendingApprovalContent = memo(
             ? 'Tool approved for this request'
             : 'Tool approved for this conversation',
         )
+
+        // Hide the component
+        setIsHidden(true)
 
         // Resume the chat - backend will automatically detect pending approval and resume
         if (conversation.model_id && conversation.assistant_id) {
@@ -88,15 +98,24 @@ export const ToolCallPendingApprovalContent = memo(
           approved: false,
           expires_at: undefined,
           notes: 'User denied tool execution',
+          approval_message_content_id: content.id,
         })
 
         message.info('Tool execution denied')
+
+        // Hide the component
+        setIsHidden(true)
       } catch (error) {
         console.error('Failed to deny tool:', error)
         message.error('Failed to deny tool')
       } finally {
         setLoading(null)
       }
+    }
+
+    // Don't render if hidden
+    if (isHidden) {
+      return null
     }
 
     return (

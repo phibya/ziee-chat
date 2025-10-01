@@ -1,10 +1,16 @@
-import { memo } from 'react'
+import { memo, useState } from 'react'
 import { theme, Typography } from 'antd'
-import { CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons'
+import {
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  DownOutlined,
+  RightOutlined,
+} from '@ant-design/icons'
 import {
   MessageContentItem,
   MessageContentDataToolResult,
 } from '../../../../types'
+import { DivScrollY } from '../../../common/DivScrollY.tsx'
 
 interface ToolResultContentProps {
   content: MessageContentItem
@@ -16,6 +22,7 @@ export const ToolResultContent = memo(function ToolResultContent({
   const { token } = theme.useToken()
   const toolResultData = content.content as MessageContentDataToolResult
   const isSuccess = toolResultData.success
+  const [isCollapsed, setIsCollapsed] = useState(true)
 
   return (
     <div
@@ -25,35 +32,42 @@ export const ToolResultContent = memo(function ToolResultContent({
         backgroundColor: isSuccess ? token.colorSuccessBg : token.colorErrorBg,
       }}
     >
-      <Typography.Text strong>
-        {isSuccess ? <CheckCircleOutlined /> : <CloseCircleOutlined />} Tool
-        Result
-      </Typography.Text>
-      <div className="mt-2">
-        <Typography.Text type="secondary">
-          Call ID: {toolResultData.call_id}
+      <div
+        className="flex items-center gap-2 cursor-pointer"
+        onClick={() => setIsCollapsed(!isCollapsed)}
+      >
+        {isCollapsed ? <RightOutlined /> : <DownOutlined />}
+        <Typography.Text strong>
+          {isSuccess ? <CheckCircleOutlined /> : <CloseCircleOutlined />} Tool
+          Result
         </Typography.Text>
-        {toolResultData.error_message && (
-          <div className="mt-1">
-            <Typography.Text type="danger">
-              Error: {toolResultData.error_message}
-            </Typography.Text>
-          </div>
-        )}
-        <div className="mt-2">
-          <Typography.Text type="secondary">Result:</Typography.Text>
-          <pre
-            className="mt-1 p-2 rounded max-h-40 overflow-y-auto"
-            style={{
-              backgroundColor: token.colorBgContainer,
-              border: `1px solid ${token.colorBorderSecondary}`,
-              fontSize: '12px',
-            }}
-          >
-            {JSON.stringify(toolResultData.result, null, 2)}
-          </pre>
-        </div>
       </div>
+      {!isCollapsed && (
+        <div className="mt-2">
+          {toolResultData.error_message && (
+            <div className="mt-1">
+              <Typography.Text type="danger">
+                Error: {toolResultData.error_message}
+              </Typography.Text>
+            </div>
+          )}
+          <div className="mt-2">
+            <Typography.Text type="secondary">Result:</Typography.Text>
+            <DivScrollY
+              className="mt-1 p-1 rounded max-h-40"
+              style={{
+                backgroundColor: token.colorBgContainer,
+                border: `1px solid ${token.colorBorderSecondary}`,
+                fontSize: '12px',
+              }}
+            >
+              <pre className="w-full rounded">
+                {JSON.stringify(toolResultData.result, null, 2)}
+              </pre>
+            </DivScrollY>
+          </div>
+        </div>
+      )}
     </div>
   )
 })

@@ -1,10 +1,11 @@
-import { memo } from 'react'
+import { memo, useState } from 'react'
 import { theme, Typography } from 'antd'
-import { ToolOutlined } from '@ant-design/icons'
+import { DownOutlined, RightOutlined, ToolOutlined } from '@ant-design/icons'
 import {
-  MessageContentItem,
   MessageContentDataToolCall,
+  MessageContentItem,
 } from '../../../../types'
+import { DivScrollY } from '../../../common/DivScrollY.tsx'
 
 interface ToolCallContentProps {
   content: MessageContentItem
@@ -15,6 +16,7 @@ export const ToolCallContent = memo(function ToolCallContent({
 }: ToolCallContentProps) {
   const { token } = theme.useToken()
   const toolCallData = content.content as MessageContentDataToolCall
+  const [isCollapsed, setIsCollapsed] = useState(true)
 
   return (
     <div
@@ -24,27 +26,32 @@ export const ToolCallContent = memo(function ToolCallContent({
         backgroundColor: token.colorInfoBg,
       }}
     >
-      <Typography.Text strong>
-        <ToolOutlined /> Tool Call: {toolCallData.tool_name}
-      </Typography.Text>
-      <div className="mt-2">
-        <Typography.Text type="secondary">
-          Call ID: {toolCallData.call_id}
+      <div
+        className="flex items-center gap-2 cursor-pointer"
+        onClick={() => setIsCollapsed(!isCollapsed)}
+      >
+        {isCollapsed ? <RightOutlined /> : <DownOutlined />}
+        <Typography.Text strong>
+          <ToolOutlined /> Tool Call: {toolCallData.tool_name}
         </Typography.Text>
-        <div className="mt-1">
+      </div>
+      {!isCollapsed && (
+        <div className="mt-2">
           <Typography.Text type="secondary">Arguments:</Typography.Text>
-          <pre
-            className="mt-1 p-2 rounded overflow-auto"
+          <DivScrollY
+            className="mt-1 p-1 rounded max-h-40"
             style={{
               backgroundColor: token.colorBgContainer,
               border: `1px solid ${token.colorBorderSecondary}`,
               fontSize: '12px',
             }}
           >
-            {JSON.stringify(toolCallData.arguments, null, 2)}
-          </pre>
+            <pre className="w-full rounded">
+              {JSON.stringify(toolCallData.arguments, null, 2)}
+            </pre>
+          </DivScrollY>
         </div>
-      </div>
+      )}
     </div>
   )
 })

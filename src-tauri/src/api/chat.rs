@@ -535,7 +535,7 @@ pub async fn send_message_stream(
                             serde_json::to_value(&content.content).unwrap_or_default()
                         );
 
-                        if let Ok(MessageContentData::ToolCallPendingApproval { tool_name, server_id, arguments }) = tool_data {
+                        if let Ok(MessageContentData::ToolCallPendingApproval { tool_name, server_id, arguments, is_approved: _ }) = tool_data {
                             // Check if approved
                             let is_approved = match chat::check_tool_approval(
                                 request.conversation_id,
@@ -634,6 +634,7 @@ pub async fn send_message_stream(
                     tool_name: tool_request.tool_name.clone(),
                     server_id: tool_request.server_id,
                     arguments: tool_request.arguments.clone(),
+                    is_approved: None,
                 };
 
                 match chat::save_pending_tool_approval_content(

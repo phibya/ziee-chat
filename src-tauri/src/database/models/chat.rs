@@ -66,6 +66,8 @@ pub enum MessageContentData {
         tool_name: String,
         server_id: Uuid,
         arguments: serde_json::Value,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        is_approved: Option<bool>,
     },
 
     #[serde(rename = "tool_call_pending_approval_cancel")]
@@ -197,7 +199,9 @@ impl From<MessageContentRow> for MessageContentItem {
                 let arguments = row.content.get("arguments")
                     .cloned()
                     .unwrap_or(serde_json::Value::Null);
-                MessageContentData::ToolCallPendingApproval { tool_name, server_id, arguments }
+                let is_approved = row.content.get("is_approved")
+                    .and_then(|v| v.as_bool());
+                MessageContentData::ToolCallPendingApproval { tool_name, server_id, arguments, is_approved }
             }
             MessageContentType::ToolCallPendingApprovalCancel => {
                 let tool_name = row.content.get("tool_name")
