@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::database::models::{Message, MessageBranch};
-use crate::utils::chat::EnabledMCPTool;
+use crate::api::chat::utils::EnabledMCPTool;
 
 /// Request structure for sending/editing chat messages
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]

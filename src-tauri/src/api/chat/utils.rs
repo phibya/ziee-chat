@@ -12,12 +12,13 @@
 use uuid::Uuid;
 
 use crate::ai::core::{ChatMessage, ContentPart, MessageContent};
-use crate::api::chat::ChatMessageRequest;
 use crate::database::models::MessageContentData;
 use crate::database::queries::{
     assistants::get_assistant_by_id,
     chat::get_conversation_messages,
 };
+
+use super::ChatMessageRequest;
 
 /// Build messages array for a chat request with conversation history and file attachments
 pub async fn build_chat_messages(

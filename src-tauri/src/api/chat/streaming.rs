@@ -12,7 +12,7 @@ use crate::database::queries::{
     chat,
     models::{get_model_by_id, get_provider_by_model_id},
 };
-use crate::utils::chat::{build_chat_messages, build_tool_definitions};
+use super::utils::{build_chat_messages, build_tool_definitions};
 
 use super::helpers::{generate_and_update_conversation_title, send_error};
 use super::tool_handling::{check_and_handle_pending_approval, handle_tool_request};

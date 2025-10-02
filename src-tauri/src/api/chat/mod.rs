@@ -10,6 +10,7 @@
 //! - `tool_handling`: Tool approval and execution logic
 //! - `streaming`: Core streaming logic for AI responses
 //! - `handlers`: Public API handlers for chat operations
+//! - `utils`: Utility functions for chat (message building, tool definitions)
 //!
 //! ## Public API
 //!
@@ -20,6 +21,7 @@ mod helpers;
 mod streaming;
 mod tool_handling;
 mod types;
+pub mod utils;
 
 // Re-export public items used by router
 pub use handlers::{

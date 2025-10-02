@@ -8,7 +8,7 @@ use crate::ai::SimplifiedChatRequest;
 use crate::api::errors::ErrorCode;
 use crate::database::models::UpdateConversationRequest;
 use crate::database::queries::chat;
-use crate::utils::chat::build_single_user_message;
+use super::utils::build_single_user_message;
 
 use super::types::{SSEChatStreamEvent, StreamErrorData, TitleUpdatedData};
 
