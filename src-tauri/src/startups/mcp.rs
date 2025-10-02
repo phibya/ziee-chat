@@ -1,6 +1,6 @@
 use crate::database::queries::{mcp_servers, mcp_execution_logs};
-use crate::mcp::server_manager::{start_mcp_server, reconcile_mcp_server_states};
-use crate::mcp::{start_auto_restart_task, MCPAutoRestartConfig};
+use crate::ai::mcp::server_manager::{start_mcp_server, reconcile_mcp_server_states};
+use crate::ai::mcp::{start_auto_restart_task, MCPAutoRestartConfig};
 use crate::database::models::mcp_server::MCPServerStatus;
 use tracing::{info, warn, error};
 
@@ -85,7 +85,7 @@ pub async fn cleanup_mcp() {
     info!("Cleaning up MCP servers...");
 
     // Use the shutdown_all function which handles cleanup properly
-    match crate::mcp::server_manager::shutdown_all_mcp_servers().await {
+    match crate::ai::mcp::server_manager::shutdown_all_mcp_servers().await {
         Ok(_) => {
             info!("Successfully shut down all MCP servers");
         }

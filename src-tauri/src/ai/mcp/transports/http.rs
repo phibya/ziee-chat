@@ -4,7 +4,7 @@ use std::sync::Arc;
 use url::Url;
 
 use crate::database::models::mcp_server::MCPServer;
-use crate::mcp::protocol::{MCPRequest, MCPResponse};
+use crate::ai::mcp::protocol::{MCPRequest, MCPResponse};
 use super::{MCPTransport, MCPConnectionInfo};
 
 pub struct MCPHttpTransport {

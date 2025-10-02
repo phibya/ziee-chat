@@ -17,7 +17,7 @@ use crate::database::{
     models::mcp_tool::{MCPToolWithServer, MCPToolWithApproval, SetToolGlobalApprovalRequest},
     queries::{mcp_tools, mcp_servers, mcp_tool_approvals},
 };
-use crate::mcp::tool_discovery::{discover_and_cache_tools_http, should_rediscover_tools};
+use crate::ai::mcp::tool_discovery::{discover_and_cache_tools_http, should_rediscover_tools};
 
 
 // Request/Response types

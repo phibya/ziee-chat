@@ -8,10 +8,10 @@ use uuid::Uuid;
 
 use crate::database::models::mcp_server::MCPTransportType;
 use crate::database::queries::mcp_servers;
-use crate::mcp::protocol::{MCPRequest, MCPResponse, methods};
-use crate::mcp::transports::http::MCPHttpTransport;
-use crate::mcp::transports::sse::MCPSSETransport;
-use crate::mcp::transports::MCPTransport;
+use crate::ai::mcp::protocol::{MCPRequest, MCPResponse, methods};
+use crate::ai::mcp::transports::http::MCPHttpTransport;
+use crate::ai::mcp::transports::sse::MCPSSETransport;
+use crate::ai::mcp::transports::MCPTransport;
 
 // ============================================
 // Result Types

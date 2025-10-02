@@ -3,7 +3,6 @@ mod api;
 mod auth;
 mod database;
 pub mod global;
-pub mod mcp;
 mod processing;
 pub mod route;
 pub mod startups;

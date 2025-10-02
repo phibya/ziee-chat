@@ -216,7 +216,7 @@ async fn execute_tool_and_save_result(
     // Execute tool via MCP
     let start_time = std::time::Instant::now();
 
-    let execution_result = crate::mcp::tool_executor::execute_mcp_tool(
+    let execution_result = crate::ai::mcp::tool_executor::execute_mcp_tool(
         server_id,
         tool_name.to_string(),
         arguments.clone(),

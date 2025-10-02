@@ -4,7 +4,7 @@ use tokio::sync::Mutex;
 use uuid::Uuid;
 
 use crate::database::queries::{mcp_tools, mcp_servers};
-use crate::mcp::protocol::{MCPRequest, MCPResponse, ListToolsResponse as MCPListToolsResponse};
+use crate::ai::mcp::protocol::{MCPRequest, MCPResponse, ListToolsResponse as MCPListToolsResponse};
 
 // Global locks for preventing concurrent tool discovery for same server
 lazy_static::lazy_static! {

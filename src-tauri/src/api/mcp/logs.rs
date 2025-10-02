@@ -18,7 +18,7 @@ use crate::api::{
     permissions::{check_permission, Permission},
 };
 use crate::database::queries::{mcp_servers};
-use crate::mcp::logging::{MCPLogger, MCPLogEntry, LogWatcherManager};
+use crate::ai::mcp::logging::{MCPLogger, MCPLogEntry, LogWatcherManager};
 use tokio::sync::broadcast;
 
 #[derive(Debug, Clone, Serialize, JsonSchema)]

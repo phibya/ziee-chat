@@ -7,8 +7,8 @@ use schemars::JsonSchema;
 
 use crate::database::models::mcp_server::MCPTransportType;
 use crate::database::queries::mcp_servers;
-use crate::mcp::transports::create_mcp_transport;
-use crate::mcp::logging::MCPLogger;
+use crate::ai::mcp::transports::create_mcp_transport;
+use crate::ai::mcp::logging::MCPLogger;
 
 #[derive(Debug)]
 struct MCPServerProcess {

@@ -8,7 +8,7 @@ use tokio::sync::{Mutex, oneshot, broadcast};
 use url::Url;
 
 use crate::database::models::mcp_server::MCPServer;
-use crate::mcp::protocol::{MCPRequest, MCPResponse, MCPNotification};
+use crate::ai::mcp::protocol::{MCPRequest, MCPResponse, MCPNotification};
 use super::{MCPTransport, MCPConnectionInfo};
 
 pub struct MCPSSETransport {

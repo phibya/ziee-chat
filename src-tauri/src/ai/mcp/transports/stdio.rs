@@ -21,9 +21,9 @@ use futures;
 
 use crate::database::models::mcp_server::MCPServer;
 use crate::database::queries::mcp_servers;
-use crate::mcp::logging::MCPLogger;
-use crate::mcp::protocol::{MCPRequest, MCPResponse, MCPNotification, InitializeRequest, InitializeResponse, MCPCapabilities, ClientInfo, methods, RootsCapability, PromptsCapability, ResourcesCapability, ToolsCapability, SessionCapability, StreamingCapability, MCPProtocolVersion, detect_protocol_version_from_request, parse_protocol_version};
-use crate::mcp::tool_discovery::{ToolDiscoveryClient, discover_and_cache_tools_direct};
+use crate::ai::mcp::logging::MCPLogger;
+use crate::ai::mcp::protocol::{MCPRequest, MCPResponse, MCPNotification, InitializeRequest, InitializeResponse, MCPCapabilities, ClientInfo, methods, RootsCapability, PromptsCapability, ResourcesCapability, ToolsCapability, SessionCapability, StreamingCapability, MCPProtocolVersion, detect_protocol_version_from_request, parse_protocol_version};
+use crate::ai::mcp::tool_discovery::{ToolDiscoveryClient, discover_and_cache_tools_direct};
 use crate::utils::resource_paths::ResourcePaths;
 use super::{MCPTransport, MCPConnectionInfo};
 

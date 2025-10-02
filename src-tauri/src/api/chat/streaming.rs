@@ -401,7 +401,7 @@ pub(super) async fn execute_message_stream_loop(
     should_create_user_message: bool,
     resume_from_message_id: Option<Uuid>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    const MAX_ITERATIONS: usize = 5;
+    const MAX_ITERATIONS: usize = 10; // Prevent infinite loops
     let mut iteration = 0;
     let mut last_assistant_message_id: Option<Uuid> = resume_from_message_id;
     let is_resuming = resume_from_message_id.is_some();

@@ -18,7 +18,7 @@ use crate::database::{
     models::mcp_server::{MCPServer, CreateMCPServerRequest, CreateSystemMCPServerRequest, UpdateMCPServerRequest, MCPTransportType},
     queries::{mcp_servers, user_group_mcp_servers},
 };
-use crate::mcp::{start_mcp_server, stop_mcp_server};
+use crate::ai::mcp::{start_mcp_server, stop_mcp_server};
 
 // Helper function to check server access permissions
 async fn check_server_access(

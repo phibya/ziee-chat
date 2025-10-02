@@ -12,6 +12,7 @@ pub mod model_manager;
 pub mod providers;
 pub mod rag;
 pub mod utils;
+pub mod mcp;
 
 // Define local types that were previously from local_server
 #[derive(Debug, Clone)]
