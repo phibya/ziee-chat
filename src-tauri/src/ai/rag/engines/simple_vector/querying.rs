@@ -1,33 +1,14 @@
 // Query processing methods for Simple Vector RAG Engine
 
 use super::queries::similarity_search_documents;
-use super::utils::{
-    apply_rerank_if_enabled, deduplicate_chunks_by_id,
-    get_tokenizer, truncate_chunks_by_tokens,
-};
 use super::RAGSimpleVectorEngine;
 use crate::ai::rag::{
     RAGErrorCode, RAGQuery, RAGQueryResponse, RAGQueryingErrorCode, RAGResult, RAGSource,
-    QueryMode, SimpleVectorDocument,
+    SimpleVectorDocument,
 };
 use std::collections::HashMap;
 
-
-
 impl RAGSimpleVectorEngine {
-    /// Helper function to create a chat request for query refinement
-    fn create_refinement_request(prompt: String) -> crate::ai::SimplifiedChatRequest {
-        crate::ai::SimplifiedChatRequest {
-            messages: vec![
-                crate::ai::core::providers::ChatMessage {
-                    role: "user".to_string(),
-                    content: prompt.into(),
-                },
-            ],
-            stream: false,
-            tools: None, // No tools needed for RAG query refinement
-        }
-    }
     /// Retrieve text chunks from vector database (LightRAG _get_vector_context pattern)
     pub(super) async fn get_vector_context(
         &self,
@@ -69,48 +50,6 @@ impl RAGSimpleVectorEngine {
         Ok(results)
     }
 
-    /// Process chunks with deduplication, reranking, and token truncation (LightRAG process_chunks_unified)
-    pub(super) async fn process_chunks_unified(
-        &self,
-        query_text: &str,
-        chunks: Vec<(SimpleVectorDocument, f32)>,
-        _query: &RAGQuery,
-        available_chunk_tokens: usize,
-    ) -> RAGResult<Vec<(SimpleVectorDocument, f32)>> {
-        if chunks.is_empty() {
-            return Ok(vec![]);
-        }
-
-        let original_count = chunks.len();
-        let mut processed_chunks = chunks;
-
-        // 1. Deduplication by chunk_id (LightRAG pattern)
-        processed_chunks = deduplicate_chunks_by_id(processed_chunks);
-
-        // 2. Reranking (if enabled and rerank model available)
-        if self.rag_instance.instance.engine_settings.simple_vector
-            .as_ref()
-            .map_or(false, |s| s.querying.as_ref().map_or(false, |q| q.enable_rerank()))
-        {
-            processed_chunks = apply_rerank_if_enabled(query_text, processed_chunks).await?;
-        }
-
-        // 3. Token-based truncation (LightRAG truncate_list_by_token_size)
-        let tokenizer = get_tokenizer();
-        processed_chunks =
-            truncate_chunks_by_tokens(processed_chunks, available_chunk_tokens, &tokenizer).await?;
-
-        tracing::debug!(
-            "Unified chunk processing: {} chunks from {} (available_tokens: {})",
-            processed_chunks.len(),
-            original_count,
-            available_chunk_tokens
-        );
-
-        Ok(processed_chunks)
-    }
-
-
     /// Generate embedding for query text with high priority
     pub(super) async fn generate_query_embedding(&self, query_text: &str) -> RAGResult<Vec<f32>> {
         let embedding_request = crate::ai::SimplifiedEmbeddingsRequest {
@@ -149,11 +88,11 @@ impl RAGSimpleVectorEngine {
         }
     }
 
-    /// Handle bypass mode queries - vector retrieval only, no LLM generation
-    pub(super) async fn query_bypass(&self, query: &RAGQuery) -> RAGResult<RAGQueryResponse> {
+    /// Vector search - retrieval only, no LLM generation
+    pub(super) async fn vector_search(&self, query: &RAGQuery) -> RAGResult<RAGQueryResponse> {
         let start_time = std::time::Instant::now();
 
-        // Bypass mode: Only vector retrieval, no LLM generation
+        // Vector retrieval only
         let raw_chunks = self.get_vector_context(&query.text).await?;
 
         if raw_chunks.is_empty() {
@@ -179,101 +118,14 @@ impl RAGSimpleVectorEngine {
 
         Ok(RAGQueryResponse {
             sources,
-            mode_used: QueryMode::Bypass,
+            mode_used: query.mode.clone(),
             confidence_score: None,
             processing_time_ms: processing_time,
             metadata,
         })
     }
 
-    /// Handle full RAG pipeline queries - vector retrieval + LLM generation
-    pub(super) async fn query_with_llm(&self, query: &RAGQuery) -> RAGResult<RAGQueryResponse> {
-        let start_time = std::time::Instant::now();
-
-        // 1. Generate refined query using LLM
-        let prompt_template = self.rag_instance.instance.engine_settings.simple_vector
-            .as_ref()
-            .and_then(|s| s.querying.as_ref())
-            .and_then(|q| q.prompt_template_pre_query.as_deref())
-            .unwrap_or("{query}"); // Fallback to just the content if no template
-
-        let history_context = String::new(); // TODO: Get conversation history from database
-        let refined_query_prompt = prompt_template
-            .replace("{query}", &query.text)
-            .replace("{history}", &history_context);
-
-        // Use LLM to generate refined query text
-        let refined_query_text = if let Some(chat_request) = query.context.as_ref().and_then(|c| c.chat_request.as_ref()) {
-            // Get the LLM model from the chat request's model_id
-            let llm_model = crate::ai::model_manager::model_factory::create_ai_model(chat_request.model_id).await
-                .map_err(|e| {
-                    tracing::error!("Failed to create AI model for query refinement: {}", e);
-                    RAGErrorCode::Querying(RAGQueryingErrorCode::LlmModelUnavailable)
-                })?;
-
-            let completion_request = Self::create_refinement_request(refined_query_prompt.clone());
-
-            let response = llm_model.chat(completion_request).await.map_err(|e| {
-                tracing::error!("Query refinement failed: {}", e);
-                RAGErrorCode::Querying(RAGQueryingErrorCode::LlmGenerationFailed)
-            })?;
-
-            response.content
-        } else {
-            // No chat context provided - this is required for query refinement
-            tracing::error!("No chat request provided for query refinement");
-            return Err(RAGErrorCode::Querying(RAGQueryingErrorCode::LlmModelUnavailable));
-        };
-
-        tracing::debug!("Original query: '{}' -> Refined query: '{}'", query.text, refined_query_text);
-
-        // 2. Vector Context Retrieval with refined query
-        let raw_chunks = self.get_vector_context(&refined_query_text).await?;
-
-        if raw_chunks.is_empty() {
-            tracing::warn!("No relevant chunks found for query: {}", query.text);
-            return Ok(self.handle_empty_results(query, start_time.elapsed().as_millis() as u64));
-        }
-        
-        // 3. Unified Chunk Processing
-        let processed_chunks = self
-            .process_chunks_unified(
-                &query.text,
-                raw_chunks,
-                query,
-                4000, // Default available tokens for chunks
-            )
-            .await?;
-
-        if processed_chunks.is_empty() {
-            tracing::warn!("No chunks survived processing for query: {}", query.text);
-            return Ok(self.handle_empty_results(query, start_time.elapsed().as_millis() as u64));
-        }
-
-        let processing_time = start_time.elapsed().as_millis() as u64;
-
-        let sources: Vec<RAGSource> = processed_chunks
-            .into_iter()
-            .map(|(document, similarity_score)| RAGSource {
-                document,
-                similarity_score,
-            })
-            .collect();
-
-        // Include basic metadata
-        let mut metadata = HashMap::new();
-        metadata.insert("chunks_used".to_string(), serde_json::json!(sources.len()));
-
-        Ok(RAGQueryResponse {
-            sources,
-            mode_used: query.mode.clone(),
-            confidence_score: None, // TODO: Calculate confidence
-            processing_time_ms: processing_time,
-            metadata,
-        })
-    }
-
-    /// Complete RAG query processing
+    /// Complete RAG query processing - all modes now use vector search only
     pub async fn query_impl(&self, query: RAGQuery) -> RAGResult<RAGQueryResponse> {
         tracing::info!(
             "Starting RAG query: {} (mode: {:?})",
@@ -281,13 +133,7 @@ impl RAGSimpleVectorEngine {
             query.mode
         );
 
-        match query.mode {
-            QueryMode::Bypass => {
-                self.query_bypass(&query).await
-            }
-            QueryMode::Naive | QueryMode::Local | QueryMode::Global | QueryMode::Hybrid | QueryMode::Mix => {
-                self.query_with_llm(&query).await
-            }
-        }
+        // All query modes now use vector search only
+        self.vector_search(&query).await
     }
 }

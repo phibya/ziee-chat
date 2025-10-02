@@ -17,7 +17,7 @@ use crate::api::{
 };
 use crate::ai::rag::{
     engines::{simple_vector::RAGSimpleVectorEngine, traits::RAGEngine},
-    QueryContext, QueryMode, RAGQuery, RAGSource,
+    QueryMode, RAGQuery, RAGSource,
 };
 use crate::database::{
     models::{
@@ -543,18 +543,10 @@ pub async fn query_rag_instance_handler(
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error(&format!("Failed to create RAG engine: {}", e))))?;
 
-    // Build query context
-    let context = QueryContext {
-        previous_queries: Vec::new(),
-        chat_request: None, // No chat context for testing API
-    };
-
-    // Create query params from request
-    // Create RAG query
+    // Create RAG query (no context needed anymore)
     let rag_query = RAGQuery {
         text: request.query,
         mode: QueryMode::Bypass, // Always use Bypass mode for this testing endpoint
-        context: Some(context),
     };
 
     // Execute query

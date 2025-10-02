@@ -1,3 +1,4 @@
+use crate::ai::rag::mcp_server::start_rag_mcp_server;
 use crate::ai::rag::service::RAGService;
 use once_cell::sync::Lazy;
 use std::sync::Arc;
@@ -22,6 +23,14 @@ pub async fn initialize_rag() -> Result<(), String> {
     *global_service = Some(service);
 
     println!("RAG service initialized successfully");
+
+    // Start the internal RAG MCP server
+    if let Err(e) = start_rag_mcp_server().await {
+        eprintln!("Failed to start RAG MCP server: {}", e);
+        return Err(format!("Failed to start RAG MCP server: {}", e));
+    }
+
+    println!("RAG MCP server started successfully");
     Ok(())
 }
 

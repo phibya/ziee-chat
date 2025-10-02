@@ -2,6 +2,7 @@
 // Core types and traits for RAG functionality
 
 pub mod engines;
+pub mod mcp_server;
 pub mod models;
 pub mod processors;
 pub mod rag_file_storage;
@@ -322,7 +323,6 @@ impl std::fmt::Display for PipelineStage {
 pub struct RAGQuery {
     pub text: String,
     pub mode: QueryMode,
-    pub context: Option<QueryContext>,
 }
 
 /// Query modes (inspired by LightRAG)
@@ -340,20 +340,6 @@ pub enum QueryMode {
     Naive,
     /// Bypass RAG, direct LLM query
     Bypass,
-}
-
-/// Query context information
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct QueryContext {
-    pub previous_queries: Vec<String>,
-    pub chat_request: Option<crate::api::chat::ChatMessageRequest>,
-}
-
-/// Conversation message for history processing
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ConversationMessage {
-    pub role: String,
-    pub content: String,
 }
 
 /// RAG query response

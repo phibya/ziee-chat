@@ -1,6 +1,6 @@
 // Utility functions for Simple Vector RAG Engine
 
-use crate::ai::rag::{RAGResult, ConversationMessage, SimpleVectorDocument};
+use crate::ai::rag::{RAGResult, SimpleVectorDocument};
 
 /// Token budget allocation for query processing
 #[derive(Debug, Clone)]
@@ -107,55 +107,7 @@ pub fn format_chunks_as_context(chunks: &[(SimpleVectorDocument, f32)]) -> Strin
     context_parts.join("\n")
 }
 
-/// Advanced conversation history processing (LightRAG get_conversation_turns)
-pub fn format_conversation_history(history: &[ConversationMessage], num_turns: usize) -> String {
-    if num_turns == 0 {
-        return String::new();
-    }
-    
-    // 1. Filter out keyword extraction messages
-    let filtered_messages: Vec<&ConversationMessage> = history.iter()
-        .filter(|msg| {
-            !(msg.role == "assistant" && 
-              (msg.content.starts_with(r#"{ "high_level_keywords""#) ||
-               msg.content.starts_with(r#"{'high_level_keywords'"#)))
-        })
-        .collect();
-    
-    // 2. Group messages into complete turns (user-assistant pairs)
-    let mut turns = Vec::new();
-    let mut i = 0;
-    while i < filtered_messages.len().saturating_sub(1) {
-        let msg1 = &filtered_messages[i];
-        let msg2 = &filtered_messages[i + 1];
-        
-        // Check for user-assistant or assistant-user pairs
-        if (msg1.role == "user" && msg2.role == "assistant") ||
-           (msg1.role == "assistant" && msg2.role == "user") {
-            
-            // Always put user message first in turn
-            if msg1.role == "assistant" {
-                turns.push((msg2, msg1)); // (user, assistant)
-            } else {
-                turns.push((msg1, msg2)); // (user, assistant)
-            }
-        }
-        i += 2;
-    }
-    
-    // 3. Keep only the most recent num_turns
-    if turns.len() > num_turns {
-        let skip_count = turns.len() - num_turns;
-        turns = turns.into_iter().skip(skip_count).collect();
-    }
-    
-    // 4. Format turns as string
-    turns.into_iter().map(|(user_msg, assistant_msg)| {
-        format!("user: {}\nassistant: {}", user_msg.content, assistant_msg.content)
-    }).collect::<Vec<_>>().join("\n")
-}
-
-/// Response post-processing (LightRAG response cleaning)
+/// Response post-processing (LightRAG response cleaning - DEPRECATED, no longer used)
 pub fn post_process_llm_response(response: String, query: &str, system_prompt: &str) -> String {
     if response.len() <= system_prompt.len() {
         return response;
