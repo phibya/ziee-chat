@@ -15,6 +15,7 @@ import {
   NewMessageContentData,
   ToolCallData,
   ToolCallPendingApprovalData,
+  ToolCallPendingApprovalCancelData,
   ToolResultData,
   TitleUpdatedData,
 } from '../../types'
@@ -160,7 +161,7 @@ export const createSSEHandlers = (context: SSEHandlerContext) => {
       const editedMessage = data
       set(state => ({
         messages: state.messages.map((msg: Message) =>
-          msg.id === editMessageId ? editedMessage : msg
+          msg.id === editMessageId ? editedMessage : msg,
         ),
       }))
       removeMessageBranchStoreByOriginatedId(editedMessage.originated_from_id)
@@ -214,15 +215,21 @@ export const createSSEHandlers = (context: SSEHandlerContext) => {
         const updatedMessages = state.messages.map((msg: Message) => {
           if (msg.id === targetMessageId) {
             // Find the specific content item by message_content_id
-            const contentExists = msg.contents.some(c => c.id === data.message_content_id)
+            const contentExists = msg.contents.some(
+              c => c.id === data.message_content_id,
+            )
             if (contentExists) {
               const updatedContents = msg.contents.map(c => {
-                if (c.id === data.message_content_id && c.content_type === 'text') {
+                if (
+                  c.id === data.message_content_id &&
+                  c.content_type === 'text'
+                ) {
                   return {
                     ...c,
                     content: {
                       ...c.content,
-                      text: (c.content as MessageContentDataText).text + data.delta,
+                      text:
+                        (c.content as MessageContentDataText).text + data.delta,
                     },
                   }
                 }
@@ -307,6 +314,42 @@ export const createSSEHandlers = (context: SSEHandlerContext) => {
           isStreaming: false,
           sending: false,
         }
+      })
+    },
+
+    toolCallPendingApprovalCancel: (
+      data: ToolCallPendingApprovalCancelData,
+    ) => {
+      set(state => {
+        const updatedMessages = state.messages.map((msg: Message) => {
+          // Find and update the content with matching message_content_id
+          const updatedContents = msg.contents.map(
+            (content: MessageContentItem) => {
+              if (
+                content.id === data.message_content_id &&
+                content.content_type === 'tool_call_pending_approval'
+              ) {
+                return {
+                  ...content,
+                  content: {
+                    ...content.content,
+                    is_approved: false,
+                  } as MessageContentDataToolCallPendingApproval,
+                  updated_at: new Date().toISOString(),
+                }
+              }
+              return content
+            },
+          )
+
+          // Only return updated message if contents changed
+          if (updatedContents !== msg.contents) {
+            return { ...msg, contents: updatedContents }
+          }
+          return msg
+        })
+
+        return { messages: updatedMessages }
       })
     },
 
@@ -416,7 +459,9 @@ export const createSSEHandlers = (context: SSEHandlerContext) => {
         sending: false,
         isStreaming: false,
         // Clean up streaming-temp message if it exists (editMessage)
-        messages: state.messages.filter((msg: Message) => msg.id !== 'streaming-temp'),
+        messages: state.messages.filter(
+          (msg: Message) => msg.id !== 'streaming-temp',
+        ),
       }))
       console.error('Streaming error:', data)
     },

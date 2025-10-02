@@ -459,6 +459,25 @@ pub(super) async fn execute_message_stream_loop(
                             message_id: user_message.id,
                         });
                     let _ = tx.send(Ok(new_user_message_event.into()));
+
+                    // Cancel any pending tool approvals in this conversation
+                    match chat::cancel_pending_tool_approvals(request.conversation_id).await {
+                        Ok(cancelled_content_ids) => {
+                            // Send cancel event for each cancelled approval
+                            for content_id in cancelled_content_ids {
+                                let cancel_event = SSEChatStreamEvent::ToolCallPendingApprovalCancel(
+                                    super::types::ToolCallPendingApprovalCancelData {
+                                        message_content_id: content_id,
+                                    },
+                                );
+                                let _ = tx.send(Ok(cancel_event.into()));
+                            }
+                        }
+                        Err(e) => {
+                            eprintln!("Warning: Failed to cancel pending tool approvals: {}", e);
+                            // Don't fail the request, just log the error
+                        }
+                    }
                 }
                 Err(e) => {
                     send_error(

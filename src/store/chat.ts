@@ -362,7 +362,7 @@ export const createChatStore = (conversation: string | Conversation) => {
             } else {
               // Resuming from existing message - find it in the current messages
               const existingMessage = get().messages.find(
-                (msg: Message) => msg.id === params.message_id
+                (msg: Message) => msg.id === params.message_id,
               )
               if (existingMessage) {
                 assistantMessage.current = existingMessage
@@ -499,7 +499,9 @@ export const createChatStore = (conversation: string | Conversation) => {
               activeBranchId,
               BranchMessagesCacheMap,
               getTargetMessageId: () =>
-                actualAssistantMessageId.current || assistantMessage.current?.id || null,
+                actualAssistantMessageId.current ||
+                assistantMessage.current?.id ||
+                null,
               actualUserMessageId: { current: null }, // Not used by edit
               actualAssistantMessageId,
               userMessage: { current: null }, // Not used by edit

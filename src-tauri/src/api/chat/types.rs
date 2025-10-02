@@ -83,6 +83,11 @@ pub struct ToolCallPendingApprovalData {
 }
 
 #[derive(Debug, Clone, Serialize, JsonSchema)]
+pub struct ToolCallPendingApprovalCancelData {
+    pub message_content_id: Uuid,
+}
+
+#[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct ToolResultData {
     pub message_content_id: Uuid,
     pub message_id: Uuid,
@@ -118,6 +123,7 @@ crate::sse_event_enum! {
         MessageContentChunk(MessageContentChunkData),
         ToolCall(ToolCallData),
         ToolCallPendingApproval(ToolCallPendingApprovalData),
+        ToolCallPendingApprovalCancel(ToolCallPendingApprovalCancelData),
         ToolResult(ToolResultData),
         TitleUpdated(TitleUpdatedData),
         MaxIterationReached(MaxIterationReachedData),

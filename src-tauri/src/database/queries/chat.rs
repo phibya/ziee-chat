@@ -1480,3 +1480,56 @@ pub async fn append_text_content_to_message(
 
     Ok(())
 }
+
+/// Cancel all pending tool approvals for a conversation
+/// Sets is_approved to false for all ToolCallPendingApproval contents where is_approved is NULL
+/// Returns the message_content_ids that were updated
+pub async fn cancel_pending_tool_approvals(
+    conversation_id: Uuid,
+) -> Result<Vec<Uuid>, Error> {
+    let pool = get_database_pool()?;
+    let pool = pool.as_ref();
+
+    // Find all message contents with pending approval (is_approved is NULL)
+    let rows = sqlx::query!(
+        r#"
+        SELECT mc.id, mc.content
+        FROM message_contents mc
+        INNER JOIN messages m ON mc.message_id = m.id
+        WHERE m.conversation_id = $1
+          AND mc.content_type = 'tool_call_pending_approval'
+          AND mc.content->>'is_approved' IS NULL
+        "#,
+        conversation_id
+    )
+    .fetch_all(pool)
+    .await?;
+
+    let mut updated_ids = Vec::new();
+
+    for row in rows {
+        // Parse the content and update is_approved to false
+        if let Ok(mut content) = serde_json::from_value::<serde_json::Value>(row.content) {
+            if let Some(obj) = content.as_object_mut() {
+                obj.insert("is_approved".to_string(), serde_json::Value::Bool(false));
+
+                // Update the database
+                sqlx::query!(
+                    r#"
+                    UPDATE message_contents
+                    SET content = $1, updated_at = NOW()
+                    WHERE id = $2
+                    "#,
+                    content,
+                    row.id
+                )
+                .execute(pool)
+                .await?;
+
+                updated_ids.push(row.id);
+            }
+        }
+    }
+
+    Ok(updated_ids)
+}

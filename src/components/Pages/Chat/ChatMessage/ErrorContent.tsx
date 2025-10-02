@@ -1,10 +1,7 @@
 import { memo } from 'react'
 import { theme, Typography } from 'antd'
 import { WarningOutlined } from '@ant-design/icons'
-import {
-  MessageContentItem,
-  MessageContentDataError,
-} from '../../../../types'
+import { MessageContentItem, MessageContentDataError } from '../../../../types'
 
 interface ErrorContentProps {
   content: MessageContentItem
