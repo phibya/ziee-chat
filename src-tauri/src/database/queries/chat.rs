@@ -466,9 +466,10 @@ pub async fn save_message(
     let mut tx = pool.begin().await?;
 
     // Prepare metadata
-    let metadata_json = if let Some(enabled_tools) = &request.enabled_tools {
+    let metadata_json = if request.enabled_tools.is_some() || request.enabled_rag_ids.is_some() {
         Some(serde_json::to_value(crate::database::models::chat::MessageMetadataStruct {
-            enabled_tools: Some(enabled_tools.clone()),
+            enabled_tools: request.enabled_tools.clone(),
+            enabled_rag_ids: request.enabled_rag_ids.clone(),
         }).unwrap())
     } else {
         None
@@ -583,9 +584,14 @@ pub async fn save_message(
         edit_count: 0,
         created_at: now,
         updated_at: now,
-        metadata: request.enabled_tools.map(|tools| crate::database::models::chat::MessageMetadataStruct {
-            enabled_tools: Some(tools),
-        }),
+        metadata: if request.enabled_tools.is_some() || request.enabled_rag_ids.is_some() {
+            Some(crate::database::models::chat::MessageMetadataStruct {
+                enabled_tools: request.enabled_tools,
+                enabled_rag_ids: request.enabled_rag_ids,
+            })
+        } else {
+            None
+        },
         files: files.into(),
         contents: vec![content_item],
     })

@@ -63,12 +63,15 @@ pub(super) async fn check_and_handle_pending_approval(
             tool_name,
             server_id,
             arguments,
-            is_approved: _,
+            is_approved,
         }) = tool_data
         {
-            // Check if approved
-            let is_approved =
-                chat::check_tool_approval(conversation_id, server_id, &tool_name).await?;
+            // Check if approved - use the database value if already set, otherwise check approval
+            let is_approved = if is_approved == Some(true) {
+                true
+            } else {
+                chat::check_tool_approval(conversation_id, server_id, &tool_name).await?
+            };
 
             if !is_approved {
                 // Not approved yet - stop and wait for approval
@@ -131,7 +134,7 @@ pub(super) async fn handle_tool_request(
         tool_name: tool_request.tool_name.clone(),
         server_id: tool_request.server_id,
         arguments: tool_request.arguments.clone(),
-        is_approved: None,
+        is_approved: if is_already_approved { Some(true) } else { None },
     };
 
     match chat::save_pending_tool_approval_content(message_id, pending_content).await {

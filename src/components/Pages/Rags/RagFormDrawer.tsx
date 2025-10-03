@@ -130,7 +130,12 @@ export const RagFormDrawer: React.FC = () => {
         ]}
         type={'disabled'}
       >
-        <Form form={form} onFinish={handleSubmit} layout="vertical">
+        <Form
+          form={form}
+          onFinish={handleSubmit}
+          layout="vertical"
+          className={'w-full'}
+        >
           <Form.Item
             name="display_name"
             label="Display Name"

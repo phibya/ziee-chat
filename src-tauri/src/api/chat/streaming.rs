@@ -60,15 +60,16 @@ pub(super) async fn stream_ai_response(
             }
         };
 
-    // If resuming from an existing message, load enabled_tools from its metadata
+    // If resuming from an existing message, load enabled_tools and enabled_rag_ids from its metadata
     let mut request = request;
-    if request.message_id.is_some() && request.enabled_tools.is_none() {
+    if request.message_id.is_some() && (request.enabled_tools.is_none() || request.enabled_rag_ids.is_none()) {
         if let Some(message_id) = request.message_id {
             // Load the message to get its metadata
             if let Ok(messages) = chat::get_conversation_messages(request.conversation_id, user_id).await {
                 if let Some(message) = messages.iter().find(|m| m.id == message_id) {
                     if let Some(metadata) = &message.metadata {
                         request.enabled_tools = metadata.enabled_tools.clone();
+                        request.enabled_rag_ids = metadata.enabled_rag_ids.clone();
                     }
                 }
             }
@@ -220,6 +221,7 @@ pub(super) async fn stream_ai_response(
             model_id: request.model_id,
             file_ids: None,
             enabled_tools: request.enabled_tools.clone(),
+            enabled_rag_ids: request.enabled_rag_ids.clone(),
         };
 
         match chat::save_message(assistant_message_req, user_id, active_branch_id).await {
@@ -449,6 +451,7 @@ pub(super) async fn execute_message_stream_loop(
                 model_id: request.model_id,
                 file_ids: request.file_ids.clone(),
                 enabled_tools: request.enabled_tools.clone(),
+                enabled_rag_ids: request.enabled_rag_ids.clone(),
             };
 
             match chat::save_message(user_message_req, user_id, None).await {

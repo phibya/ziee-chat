@@ -16,6 +16,7 @@ pub struct ChatMessageRequest {
     pub assistant_id: Uuid,
     pub file_ids: Option<Vec<Uuid>>,         // Optional file attachments
     pub enabled_tools: Option<Vec<EnabledMCPTool>>, // Optional MCP tools to send to AI
+    pub enabled_rag_ids: Option<Vec<Uuid>>,  // Optional RAG instances to query
     pub message_id: Option<Uuid>,            // Optional message ID to resume from
 }
 

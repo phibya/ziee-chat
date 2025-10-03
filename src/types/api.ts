@@ -116,6 +116,7 @@ export interface ChatMessageRequest {
   assistant_id: string
   content: string
   conversation_id: string
+  enabled_rag_ids?: string[]
   enabled_tools?: EnabledMCPTool[]
   file_ids?: string[]
   message_id?: string
@@ -938,6 +939,7 @@ export type MessageContentType = 'text' | 'tool_call' | 'tool_call_pending_appro
 export type MessageFiles = File[]
 
 export interface MessageMetadataStruct {
+  enabled_rag_ids?: string[]
   enabled_tools?: EnabledMCPTool[]
 }
 
