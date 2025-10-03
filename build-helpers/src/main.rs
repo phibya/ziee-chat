@@ -205,12 +205,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         strip_unc_prefix(canonical)
     };
     let target = env::var("TARGET").unwrap_or_else(|_| {
+        let arch = std::env::consts::ARCH;
         if cfg!(target_os = "windows") {
-            "x86_64-pc-windows-msvc".to_string()
+            format!("{}-pc-windows-msvc", arch)
         } else if cfg!(target_os = "macos") {
-            "x86_64-apple-darwin".to_string()
+            format!("{}-apple-darwin", arch)
         } else {
-            "x86_64-unknown-linux-gnu".to_string()
+            format!("{}-unknown-linux-gnu", arch)
         }
     });
 
