@@ -11,11 +11,11 @@ use crate::api::middleware::AuthenticatedUser;
 use crate::api::types::PaginationQuery;
 use crate::database::{
     models::{
-        AssignProviderToGroupRequest, AssignRAGProviderToGroupRequest, AssignUserToGroupRequest,
-        CreateUserGroupRequest, ProviderListResponse, RAGProviderListResponse,
+        AssignProviderToGroupRequest, AssignUserToGroupRequest,
+        CreateUserGroupRequest, ProviderListResponse,
         UpdateUserGroupRequest,
     },
-    queries::{user_group_providers, user_group_rag_providers, user_groups, user_group_mcp_servers},
+    queries::{user_group_providers, user_groups, user_group_mcp_servers},
 };
 
 // Create user group
@@ -39,22 +39,6 @@ pub async fn create_user_group(
                         user_group_providers::assign_provider_to_group(assign_request).await
                     {
                         eprintln!("Error assigning model provider to group: {}", e);
-                        // Continue with other providers even if one fails
-                    }
-                }
-            }
-
-            // If rag_provider_ids are provided, assign them to the group
-            if let Some(rag_provider_ids) = request.rag_provider_ids {
-                for provider_id in rag_provider_ids {
-                    let assign_request = AssignRAGProviderToGroupRequest {
-                        group_id: group.id,
-                        provider_id,
-                    };
-                    if let Err(e) =
-                        user_group_rag_providers::assign_rag_provider_to_group(assign_request).await
-                    {
-                        eprintln!("Error assigning RAG provider to group: {}", e);
                         // Continue with other providers even if one fails
                     }
                 }
@@ -174,44 +158,6 @@ pub async fn update_user_group(
                 if let Err(e) = user_group_providers::assign_provider_to_group(assign_request).await
                 {
                     eprintln!("Error assigning model provider to group: {}", e);
-                }
-            }
-        }
-    }
-
-    // Handle RAG provider assignments if provided
-    if let Some(rag_provider_ids) = &request.rag_provider_ids {
-        // First, get current assignments
-        let current_rag_providers =
-            user_group_rag_providers::get_rag_provider_ids_for_group(group_id)
-                .await
-                .unwrap_or_default();
-
-        // Remove RAG providers that are no longer in the list
-        for current_provider in &current_rag_providers {
-            if !rag_provider_ids.contains(current_provider) {
-                if let Err(e) = user_group_rag_providers::remove_rag_provider_from_group(
-                    group_id,
-                    *current_provider,
-                )
-                .await
-                {
-                    eprintln!("Error removing RAG provider from group: {}", e);
-                }
-            }
-        }
-
-        // Add new RAG providers
-        for provider_id in rag_provider_ids {
-            if !current_rag_providers.contains(provider_id) {
-                let assign_request = AssignRAGProviderToGroupRequest {
-                    group_id,
-                    provider_id: *provider_id,
-                };
-                if let Err(e) =
-                    user_group_rag_providers::assign_rag_provider_to_group(assign_request).await
-                {
-                    eprintln!("Error assigning RAG provider to group: {}", e);
                 }
             }
         }
@@ -405,49 +351,6 @@ pub async fn get_group_providers(
     Ok((
         StatusCode::OK,
         Json(ProviderListResponse {
-            providers: paginated_providers,
-            total,
-            page,
-            per_page,
-        }),
-    ))
-}
-
-// Get RAG providers assigned to a group
-#[debug_handler]
-pub async fn get_group_rag_providers(
-    Extension(_auth_user): Extension<AuthenticatedUser>,
-    Path(group_id): Path<Uuid>,
-    Query(params): Query<PaginationQuery>,
-) -> ApiResult<Json<RAGProviderListResponse>> {
-    let page = params.page.unwrap_or(1);
-    let per_page = params.per_page.unwrap_or(20);
-
-    let providers = match user_group_rag_providers::get_rag_providers_for_group(group_id).await {
-        Ok(providers) => providers,
-        Err(e) => {
-            eprintln!("Failed to get RAG providers for group {}: {}", group_id, e);
-            return Err((
-                StatusCode::INTERNAL_SERVER_ERROR,
-                AppError::internal_error("Failed to get group RAG providers"),
-            ));
-        }
-    };
-
-    // Apply pagination
-    let total = providers.len() as i64;
-    let start = ((page - 1) * per_page) as usize;
-    let end = (start + per_page as usize).min(providers.len());
-
-    let paginated_providers = if start < providers.len() {
-        providers[start..end].to_vec()
-    } else {
-        Vec::new()
-    };
-
-    Ok((
-        StatusCode::OK,
-        Json(RAGProviderListResponse {
             providers: paginated_providers,
             total,
             page,

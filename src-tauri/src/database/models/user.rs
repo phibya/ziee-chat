@@ -168,7 +168,6 @@ pub struct CreateUserGroupRequest {
     pub description: Option<String>,
     pub permissions: Vec<String>,
     pub provider_ids: Option<Vec<Uuid>>,
-    pub rag_provider_ids: Option<Vec<Uuid>>,
     pub mcp_server_ids: Option<Vec<Uuid>>,
 }
 
@@ -178,7 +177,6 @@ pub struct UpdateUserGroupRequest {
     pub description: Option<String>,
     pub permissions: Option<Vec<String>>,
     pub provider_ids: Option<Vec<Uuid>>,
-    pub rag_provider_ids: Option<Vec<Uuid>>,
     pub mcp_server_ids: Option<Vec<Uuid>>,
     pub is_active: Option<bool>,
 }

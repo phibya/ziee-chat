@@ -248,9 +248,6 @@ export const ChatInput = function ChatInput({
           file_ids: [...files.keys(), ...newFiles.keys()],
           enabled_tools:
             enabledTools && enabledTools.length > 0 ? enabledTools : undefined,
-          enabled_rag_ids: formValues.enabled_rag_ids?.length
-            ? formValues.enabled_rag_ids
-            : undefined,
         })
         onDoneEditing?.()
       } catch (error) {
@@ -268,9 +265,6 @@ export const ChatInput = function ChatInput({
       file_ids: [...files.keys(), ...newFiles.keys()],
       enabled_tools:
         enabledTools && enabledTools.length > 0 ? enabledTools : undefined,
-      enabled_rag_ids: formValues.enabled_rag_ids?.length
-        ? formValues.enabled_rag_ids
-        : undefined,
     }
 
     let newFilesBackup = new Map(newFiles)
@@ -359,7 +353,6 @@ export const ChatInput = function ChatInput({
               assistant: undefined,
               model: undefined,
               enabled_tools: [],
-              enabled_rag_ids: [],
             }}
             disabled={isDisabled}
           >
@@ -458,7 +451,6 @@ export const ChatInput = function ChatInput({
             />
 
             <Form.Item name="enabled_tools" noStyle />
-            <Form.Item name="enabled_rag_ids" noStyle />
           </Form>
         </PermissionGuard>
       </Card>

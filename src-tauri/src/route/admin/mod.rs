@@ -8,7 +8,6 @@ pub mod hardware;
 pub mod mcp;
 pub mod models;
 pub mod providers;
-pub mod rag;
 pub mod repositories;
 pub mod users;
 
@@ -24,7 +23,6 @@ pub fn admin_routes() -> ApiRouter {
             .merge(providers::admin_provider_routes())
             .merge(models::admin_model_routes())
             .merge(repositories::admin_repository_routes())
-            .nest("/rag", rag::admin_rag_routes())
             .merge(assistants::admin_assistant_routes())
             .merge(downloads::admin_download_routes())
             .merge(engines::admin_engine_routes())

@@ -32,7 +32,6 @@ import {
   createNewUserGroup,
   deleteUserGroup,
   getGroupProviders,
-  getGroupRagProviders,
   loadUserGroupMembers,
   loadUserGroups,
   Stores,
@@ -58,7 +57,6 @@ export function UserGroupsSettings() {
     error,
   } = Stores.AdminUserGroups
   const { providers: providers } = Stores.AdminProviders
-  const { providers: ragProviders } = Stores.AdminRAGProviders
 
   const [createModalVisible, setCreateModalVisible] = useState(false)
   const [editModalVisible, setEditModalVisible] = useState(false)
@@ -70,9 +68,6 @@ export function UserGroupsSettings() {
   const [groupProviders, setGroupProviders] = useState<Record<string, any[]>>(
     {},
   )
-  const [groupRagProviders, setGroupRagProviders] = useState<
-    Record<string, any[]>
-  >({})
 
   // Show errors
   useEffect(() => {
@@ -87,27 +82,21 @@ export function UserGroupsSettings() {
     const loadGroupProviders = async () => {
       if (groups.length > 0) {
         const providersMap: Record<string, any[]> = {}
-        const ragProvidersMap: Record<string, any[]> = {}
 
         for (const group of groups) {
           try {
-            const [providersResponse, ragProvidersResponse] = await Promise.all(
-              [getGroupProviders(group.id), getGroupRagProviders(group.id)],
-            )
+            const providersResponse = await getGroupProviders(group.id)
             providersMap[group.id] = providersResponse.providers
-            ragProvidersMap[group.id] = ragProvidersResponse.providers
           } catch (error) {
             console.error(
               `Failed to load providers for group ${group.id}:`,
               error,
             )
             providersMap[group.id] = []
-            ragProvidersMap[group.id] = []
           }
         }
 
         setGroupProviders(providersMap)
-        setGroupRagProviders(ragProvidersMap)
       }
     }
 
@@ -129,7 +118,6 @@ export function UserGroupsSettings() {
         description: values.description,
         permissions: values.permissions ? JSON.parse(values.permissions) : {},
         provider_ids: values.provider_ids || [],
-        rag_provider_ids: values.rag_provider_ids || [],
       }
       await createNewUserGroup(groupData)
       message.success('User group created successfully')
@@ -148,27 +136,21 @@ export function UserGroupsSettings() {
     const loadGroupProviders = async () => {
       if (groups.length > 0) {
         const providersMap: Record<string, any[]> = {}
-        const ragProvidersMap: Record<string, any[]> = {}
 
         for (const group of groups) {
           try {
-            const [providersResponse, ragProvidersResponse] = await Promise.all(
-              [getGroupProviders(group.id), getGroupRagProviders(group.id)],
-            )
+            const providersResponse = await getGroupProviders(group.id)
             providersMap[group.id] = providersResponse.providers
-            ragProvidersMap[group.id] = ragProvidersResponse.providers
           } catch (error) {
             console.error(
               `Failed to load providers for group ${group.id}:`,
               error,
             )
             providersMap[group.id] = []
-            ragProvidersMap[group.id] = []
           }
         }
 
         setGroupProviders(providersMap)
-        setGroupRagProviders(ragProvidersMap)
       }
     }
 
@@ -355,29 +337,6 @@ export function UserGroupsSettings() {
                               </Flex>
                             </Descriptions.Item>
                           )}
-                        {groupRagProviders[group.id] &&
-                          groupRagProviders[group.id].length > 0 && (
-                            <Descriptions.Item
-                              label="RAG Providers"
-                              span={{ xs: 1, sm: 2, md: 3 }}
-                            >
-                              <Flex wrap className="gap-1">
-                                {groupRagProviders[group.id].map(
-                                  (provider: any) => {
-                                    return (
-                                      <Tag
-                                        key={provider.id}
-                                        color="green"
-                                        className="text-xs"
-                                      >
-                                        {provider.name}
-                                      </Tag>
-                                    )
-                                  },
-                                )}
-                              </Flex>
-                            </Descriptions.Item>
-                          )}
                       </Descriptions>
                     </div>
                   </div>
@@ -468,27 +427,6 @@ export function UserGroupsSettings() {
                 mode="multiple"
                 placeholder="Select model providers"
                 options={providers.map(provider => ({
-                  value: provider.id,
-                  label: provider.name,
-                  disabled: !provider.enabled,
-                }))}
-                showSearch
-                filterOption={(input, option) =>
-                  (option?.label ?? '')
-                    .toLowerCase()
-                    .includes(input.toLowerCase())
-                }
-              />
-            </Form.Item>
-            <Form.Item
-              name="rag_provider_ids"
-              label="RAG Providers"
-              tooltip="Select which RAG providers this group can access"
-            >
-              <Select
-                mode="multiple"
-                placeholder="Select RAG providers"
-                options={ragProviders.map(provider => ({
                   value: provider.id,
                   label: provider.name,
                   disabled: !provider.enabled,

@@ -9,12 +9,10 @@ use crate::database::models::{MessageContentData, MessageContentType};
 use crate::database::queries::chat;
 
 use super::helpers::send_error;
-use super::rag_mcp_client::execute_rag_tool_via_mcp;
 use super::types::{
     NewMessageContentData, SSEChatStreamEvent, ToolCallData, ToolCallPendingApprovalData,
     ToolCallRequest, ToolResultData,
 };
-use serde_json::json;
 
 /// Check if the last message needs approval and handle it
 /// Returns (needs_approval, should_continue_loop)
@@ -114,97 +112,6 @@ pub(super) async fn check_and_handle_pending_approval(
     Ok((false, true))
 }
 
-/// Handle RAG tool request by forwarding to RAG MCP server
-async fn handle_rag_tool_request(
-    tool_name: String,
-    arguments: serde_json::Value,
-    message_id: Uuid,
-    tx: &tokio::sync::mpsc::UnboundedSender<Result<Event, Infallible>>,
-) -> bool {
-    // Generate call_id
-    let call_id = Uuid::new_v4().to_string();
-
-    // Save ToolCall to database (use a special UUID for RAG MCP server_id)
-    let rag_mcp_server_id = Uuid::nil(); // Use nil UUID to indicate RAG MCP server
-    let tool_call_content = MessageContentData::ToolCall {
-        tool_name: tool_name.clone(),
-        server_id: rag_mcp_server_id,
-        arguments: arguments.clone(),
-        call_id: call_id.clone(),
-    };
-
-    let tool_call_content_id = match chat::save_tool_call_content(message_id, tool_call_content).await {
-        Ok(id) => id,
-        Err(e) => {
-            send_error(tx, format!("Failed to save tool call: {}", e), ErrorCode::SystemDatabaseError).await;
-            return false;
-        }
-    };
-
-    // Send NewMessageContent event for ToolCall
-    let new_content_event = SSEChatStreamEvent::NewMessageContent(NewMessageContentData {
-        message_content_id: tool_call_content_id,
-        message_id,
-    });
-    let _ = tx.send(Ok(new_content_event.into()));
-
-    // Send ToolCall event
-    let tool_call_event = SSEChatStreamEvent::ToolCall(ToolCallData {
-        message_content_id: tool_call_content_id,
-        message_id,
-        tool_name: tool_name.clone(),
-        server_id: rag_mcp_server_id,
-        arguments: arguments.clone(),
-        call_id: call_id.clone(),
-    });
-    let _ = tx.send(Ok(tool_call_event.into()));
-
-    // Forward tool execution to RAG MCP server
-    let result = match execute_rag_tool_via_mcp(tool_name.clone(), arguments).await {
-        Ok(res) => (res, true, None),
-        Err(e) => {
-            let error_msg = format!("RAG tool execution failed: {}", e);
-            (json!({"error": error_msg.clone()}), false, Some(error_msg))
-        }
-    };
-
-    // Save ToolResult to database
-    let result_content = MessageContentData::ToolResult {
-        call_id: call_id.clone(),
-        result: result.0.clone(),
-        success: result.1,
-        error_message: result.2.clone(),
-    };
-
-    let result_content_id = match chat::save_tool_result_content(message_id, result_content).await {
-        Ok(id) => id,
-        Err(e) => {
-            send_error(tx, format!("Failed to save tool result: {}", e), ErrorCode::SystemDatabaseError).await;
-            return false;
-        }
-    };
-
-    // Send NewMessageContent event for ToolResult
-    let new_content_event = SSEChatStreamEvent::NewMessageContent(NewMessageContentData {
-        message_content_id: result_content_id,
-        message_id,
-    });
-    let _ = tx.send(Ok(new_content_event.into()));
-
-    // Send ToolResult event
-    let result_event = SSEChatStreamEvent::ToolResult(ToolResultData {
-        message_content_id: result_content_id,
-        message_id,
-        call_id,
-        result: result.0,
-        success: result.1,
-        error_message: result.2,
-    });
-    let _ = tx.send(Ok(result_event.into()));
-
-    true
-}
-
 /// Handle tool call request from AI by saving pending approval and sending events
 /// Returns true if tool request was handled, false otherwise
 pub(super) async fn handle_tool_request(
@@ -213,18 +120,7 @@ pub(super) async fn handle_tool_request(
     conversation_id: Uuid,
     tx: &tokio::sync::mpsc::UnboundedSender<Result<Event, Infallible>>,
 ) -> bool {
-    // Check if this is a RAG tool - if so, forward to RAG MCP server
-    // Tool name format: rag_{instance_id_no_dashes}_{tool_name}
-    if tool_request.tool_name.starts_with("rag_") {
-        return handle_rag_tool_request(
-            tool_request.tool_name,
-            tool_request.arguments,
-            message_id,
-            tx,
-        ).await;
-    }
-
-    // Existing MCP tool handling for user-configured MCP servers...
+    // MCP tool handling for user-configured MCP servers
     // Check if tool is already approved in the database
     let is_already_approved = match chat::check_tool_approval(conversation_id, tool_request.server_id, &tool_request.tool_name).await {
         Ok(approved) => approved,

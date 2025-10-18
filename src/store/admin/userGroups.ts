@@ -318,18 +318,6 @@ export const getGroupProviders = async (
   })
 }
 
-export const getGroupRagProviders = async (
-  groupId: string,
-  page?: number,
-  pageSize?: number,
-) => {
-  return await ApiClient.Admin.getGroupRagProviders({
-    group_id: groupId,
-    page: page || 1,
-    per_page: pageSize || 20,
-  })
-}
-
 export const getGroupMCPServers = async (groupId: string) => {
   try {
     const serverIds = await ApiClient.Admin.getGroupMcpServers({

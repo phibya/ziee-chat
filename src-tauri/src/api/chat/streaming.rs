@@ -13,7 +13,6 @@ use crate::database::queries::{
     models::{get_model_by_id, get_provider_by_model_id},
 };
 use super::utils::{build_chat_messages, build_tool_definitions};
-use super::rag_mcp_client::get_rag_tools_from_mcp;
 
 use super::helpers::{generate_and_update_conversation_title, send_error};
 use super::tool_handling::{check_and_handle_pending_approval, handle_tool_request};
@@ -61,16 +60,15 @@ pub(super) async fn stream_ai_response(
             }
         };
 
-    // If resuming from an existing message, load enabled_tools and enabled_rag_ids from its metadata
+    // If resuming from an existing message, load enabled_tools from its metadata
     let mut request = request;
-    if request.message_id.is_some() && (request.enabled_tools.is_none() || request.enabled_rag_ids.is_none()) {
+    if request.message_id.is_some() && request.enabled_tools.is_none() {
         if let Some(message_id) = request.message_id {
             // Load the message to get its metadata
             if let Ok(messages) = chat::get_conversation_messages(request.conversation_id, user_id).await {
                 if let Some(message) = messages.iter().find(|m| m.id == message_id) {
                     if let Some(metadata) = &message.metadata {
                         request.enabled_tools = metadata.enabled_tools.clone();
-                        request.enabled_rag_ids = metadata.enabled_rag_ids.clone();
                     }
                 }
             }
@@ -196,7 +194,7 @@ pub(super) async fn stream_ai_response(
         let _ = generate_and_update_conversation_title(conversation_id, user_id, &model, &tx).await;
     }
 
-    // Build tool definitions from enabled_tools and enabled_rag_ids
+    // Build tool definitions from enabled_tools
     let tools = {
         let mut all_tools = Vec::new();
 
@@ -205,20 +203,6 @@ pub(super) async fn stream_ai_response(
             match build_tool_definitions(enabled_tools).await {
                 Ok(defs) => all_tools.extend(defs),
                 Err(e) => eprintln!("Warning: Failed to build MCP tool definitions: {}", e),
-            }
-        }
-
-        // Add RAG tools from RAG MCP server (filtered by enabled RAG IDs)
-        if let Some(enabled_rag_ids) = &request.enabled_rag_ids {
-            if !enabled_rag_ids.is_empty() {
-                println!("DEBUG: Getting RAG tools from MCP for user {} with {} enabled RAG IDs", user_id, enabled_rag_ids.len());
-                match get_rag_tools_from_mcp(user_id, enabled_rag_ids).await {
-                    Ok(defs) => {
-                        println!("DEBUG: Successfully got {} RAG tools from MCP", defs.len());
-                        all_tools.extend(defs)
-                    },
-                    Err(e) => eprintln!("ERROR: Failed to get RAG tools from MCP: {}", e),
-                }
             }
         }
 
@@ -242,7 +226,6 @@ pub(super) async fn stream_ai_response(
             model_id: request.model_id,
             file_ids: None,
             enabled_tools: request.enabled_tools.clone(),
-            enabled_rag_ids: request.enabled_rag_ids.clone(),
         };
 
         match chat::save_message(assistant_message_req, user_id, active_branch_id).await {
@@ -472,7 +455,6 @@ pub(super) async fn execute_message_stream_loop(
                 model_id: request.model_id,
                 file_ids: request.file_ids.clone(),
                 enabled_tools: request.enabled_tools.clone(),
-                enabled_rag_ids: request.enabled_rag_ids.clone(),
             };
 
             match chat::save_message(user_message_req, user_id, None).await {

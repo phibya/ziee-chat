@@ -5,7 +5,6 @@ pub mod file_storage;
 pub mod hub;
 pub mod mcp;
 pub mod ngrok;
-pub mod rag;
 
 pub use ai_models::*;
 pub use api_proxy::*;
@@ -14,7 +13,6 @@ pub use file_storage::*;
 pub use hub::*;
 pub use mcp::*;
 pub use ngrok::*;
-pub use rag::*;
 
 /// Initialize all application components
 pub async fn initialize_app_common() -> Result<(), String> {
@@ -54,12 +52,6 @@ pub async fn initialize_app_common() -> Result<(), String> {
     });
 
     tokio::spawn(async {
-        if let Err(e) = initialize_rag().await {
-            eprintln!("RAG service initialization failed: {}", e);
-        }
-    });
-
-    tokio::spawn(async {
         if let Err(e) = initialize_mcp().await {
             eprintln!("MCP servers initialization failed: {}", e);
         }
@@ -72,9 +64,6 @@ pub async fn initialize_app_common() -> Result<(), String> {
 pub async fn cleanup_app_common() {
     // Cleanup MCP servers first (stop running servers)
     cleanup_mcp().await;
-
-    // Cleanup RAG service
-    cleanup_rag().await;
 
     // Cleanup AI models
     cleanup_ai_models().await;

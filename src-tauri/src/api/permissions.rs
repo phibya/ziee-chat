@@ -141,62 +141,6 @@ pub enum Permission {
     #[serde(rename = "repositories::create")]
     RepositoriesCreate,
 
-    // RAG (Retrieval-Augmented Generation) permissions
-    #[serde(rename = "rag::providers::read")]
-    RagProvidersRead,
-    #[serde(rename = "rag::providers::create")]
-    RagProvidersCreate,
-    #[serde(rename = "rag::providers::edit")]
-    RagProvidersEdit,
-    #[serde(rename = "rag::providers::delete")]
-    RagProvidersDelete,
-    #[serde(rename = "rag::repositories::read")]
-    RagRepositoriesRead,
-    #[serde(rename = "rag::repositories::create")]
-    RagRepositoriesCreate,
-    #[serde(rename = "rag::repositories::edit")]
-    RagRepositoriesEdit,
-    #[serde(rename = "rag::repositories::delete")]
-    RagRepositoriesDelete,
-
-    // RAG instance user permissions
-    #[serde(rename = "rag::instances::read")]
-    RagInstancesRead,
-    #[serde(rename = "rag::instances::create")]
-    RagInstancesCreate,
-    #[serde(rename = "rag::instances::edit")]
-    RagInstancesEdit,
-    #[serde(rename = "rag::instances::delete")]
-    RagInstancesDelete,
-
-    // RAG file management permissions
-    #[serde(rename = "rag::files::read")]
-    RagFilesRead,
-    #[serde(rename = "rag::files::add")]
-    RagFilesAdd,
-    #[serde(rename = "rag::files::remove")]
-    RagFilesRemove,
-
-    // RAG admin permissions for provider-group management
-    #[serde(rename = "rag::admin::providers::read")]
-    RagAdminProvidersRead,
-    #[serde(rename = "rag::admin::providers::create")]
-    RagAdminProvidersCreate,
-    #[serde(rename = "rag::admin::providers::edit")]
-    RagAdminProvidersEdit,
-    #[serde(rename = "rag::admin::providers::delete")]
-    RagAdminProvidersDelete,
-
-    // RAG system instance admin permissions
-    #[serde(rename = "rag::admin::instances::read")]
-    RagAdminInstancesRead,
-    #[serde(rename = "rag::admin::instances::create")]
-    RagAdminInstancesCreate,
-    #[serde(rename = "rag::admin::instances::edit")]
-    RagAdminInstancesEdit,
-    #[serde(rename = "rag::admin::instances::delete")]
-    RagAdminInstancesDelete,
-
     // Model download management permissions
     #[serde(rename = "model-downloads::read")]
     ModelDownloadsRead,
@@ -371,39 +315,6 @@ impl Permission {
             Permission::RepositoriesEdit => "repositories::edit",
             Permission::RepositoriesDelete => "repositories::delete",
             Permission::RepositoriesCreate => "repositories::create",
-
-            // RAG permissions
-            Permission::RagProvidersRead => "rag::providers::read",
-            Permission::RagProvidersCreate => "rag::providers::create",
-            Permission::RagProvidersEdit => "rag::providers::edit",
-            Permission::RagProvidersDelete => "rag::providers::delete",
-            Permission::RagRepositoriesRead => "rag::repositories::read",
-            Permission::RagRepositoriesCreate => "rag::repositories::create",
-            Permission::RagRepositoriesEdit => "rag::repositories::edit",
-            Permission::RagRepositoriesDelete => "rag::repositories::delete",
-
-            // RAG instance permissions
-            Permission::RagInstancesRead => "rag::instances::read",
-            Permission::RagInstancesCreate => "rag::instances::create",
-            Permission::RagInstancesEdit => "rag::instances::edit",
-            Permission::RagInstancesDelete => "rag::instances::delete",
-
-            // RAG file permissions
-            Permission::RagFilesRead => "rag::files::read",
-            Permission::RagFilesAdd => "rag::files::add",
-            Permission::RagFilesRemove => "rag::files::remove",
-
-            // RAG admin provider permissions
-            Permission::RagAdminProvidersRead => "rag::admin::providers::read",
-            Permission::RagAdminProvidersCreate => "rag::admin::providers::create",
-            Permission::RagAdminProvidersEdit => "rag::admin::providers::edit",
-            Permission::RagAdminProvidersDelete => "rag::admin::providers::delete",
-
-            // RAG admin instance permissions
-            Permission::RagAdminInstancesRead => "rag::admin::instances::read",
-            Permission::RagAdminInstancesCreate => "rag::admin::instances::create",
-            Permission::RagAdminInstancesEdit => "rag::admin::instances::edit",
-            Permission::RagAdminInstancesDelete => "rag::admin::instances::delete",
 
             // Model download permissions
             Permission::ModelDownloadsRead => "model-downloads::read",

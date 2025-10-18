@@ -1,6 +1,5 @@
 // Global variables and configuration for the application
 
-use crate::ai::rag::rag_file_storage::RagFileStorage;
 use crate::utils::file_storage::FileStorage;
 use once_cell::sync::Lazy;
 use std::path::PathBuf;
@@ -44,10 +43,6 @@ pub fn get_app_data_dir() -> PathBuf {
 // Global FILE_STORAGE instance for general file operations
 pub static FILE_STORAGE: Lazy<Arc<FileStorage>> =
     Lazy::new(|| Arc::new(FileStorage::new(&get_app_data_dir())));
-
-// Global RAG_FILE_STORAGE instance for RAG-specific file operations
-pub static RAG_FILE_STORAGE: Lazy<Arc<RagFileStorage>> =
-    Lazy::new(|| Arc::new(RagFileStorage::new(&get_app_data_dir())));
 
 // HTTP port for the API server
 pub static HTTP_PORT: Lazy<u16> = Lazy::new(|| get_available_port());

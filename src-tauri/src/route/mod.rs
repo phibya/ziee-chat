@@ -8,7 +8,6 @@ mod helper;
 mod hub;
 mod mcp;
 mod projects;
-mod rag;
 mod user;
 mod utils;
 
@@ -41,7 +40,6 @@ pub fn create_rest_router_internal() -> (OpenApi, Router) {
                 .merge(projects::project_routes())
                 .merge(hub::hub_routes())
                 .merge(files::file_routes())
-                .merge(rag::rag_routes())
                 .merge(mcp::mcp_routes())
                 .layer(middleware::from_fn(api::middleware::auth_middleware)),
         );

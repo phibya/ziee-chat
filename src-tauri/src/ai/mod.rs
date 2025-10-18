@@ -10,7 +10,6 @@ pub mod engines;
 pub mod file_helpers;
 pub mod model_manager;
 pub mod providers;
-pub mod rag;
 pub mod utils;
 pub mod mcp;
 

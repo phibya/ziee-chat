@@ -116,7 +116,6 @@ export interface ChatMessageRequest {
   assistant_id: string
   content: string
   conversation_id: string
-  enabled_rag_ids?: string[]
   enabled_tools?: EnabledMCPTool[]
   file_ids?: string[]
   message_id?: string
@@ -241,38 +240,6 @@ export interface CreateProviderRequest {
   proxy_settings?: ProxySettings
 }
 
-export interface CreateRAGInstanceRequest {
-  description?: string
-  display_name: string
-  embedding_model_id?: string
-  engine_settings?: RAGEngineSettings
-  engine_type: RAGEngineType
-  llm_model_id?: string
-  name: string
-  parameters?: any
-  project_id?: string
-  provider_id: string
-}
-
-export interface CreateRAGProviderRequest {
-  type: string
-  api_key?: string
-  base_url?: string
-  can_user_create_instance?: boolean
-  enabled?: boolean
-  name: string
-}
-
-export interface CreateRAGRepositoryRequest {
-  description?: string
-  auth_token?: string
-  enabled?: boolean
-  name: string
-  priority?: number
-  requires_auth?: boolean
-  url: string
-}
-
 export interface CreateRepositoryRequest {
   auth_config?: RepositoryAuthConfig
   auth_type: string
@@ -296,18 +263,6 @@ export interface CreateSystemMCPServerRequest {
   url?: string
 }
 
-export interface CreateSystemRAGInstanceRequest {
-  description?: string
-  display_name: string
-  embedding_model_id?: string
-  engine_settings?: RAGEngineSettings
-  engine_type: RAGEngineType
-  llm_model_id?: string
-  name: string
-  parameters?: any
-  provider_id: string
-}
-
 export interface CreateTrustedHostRequest {
   description?: string
   enabled?: boolean
@@ -320,7 +275,6 @@ export interface CreateUserGroupRequest {
   name: string
   permissions: string[]
   provider_ids?: string[]
-  rag_provider_ids?: string[]
 }
 
 export interface CreateUserRequest {
@@ -939,7 +893,6 @@ export type MessageContentType = 'text' | 'tool_call' | 'tool_call_pending_appro
 export type MessageFiles = File[]
 
 export interface MessageMetadataStruct {
-  enabled_rag_ids?: string[]
   enabled_tools?: EnabledMCPTool[]
 }
 
@@ -1149,29 +1102,6 @@ export enum Permission {
   RepositoriesEdit = 'repositories::edit',
   RepositoriesDelete = 'repositories::delete',
   RepositoriesCreate = 'repositories::create',
-  RagProvidersRead = 'rag::providers::read',
-  RagProvidersCreate = 'rag::providers::create',
-  RagProvidersEdit = 'rag::providers::edit',
-  RagProvidersDelete = 'rag::providers::delete',
-  RagRepositoriesRead = 'rag::repositories::read',
-  RagRepositoriesCreate = 'rag::repositories::create',
-  RagRepositoriesEdit = 'rag::repositories::edit',
-  RagRepositoriesDelete = 'rag::repositories::delete',
-  RagInstancesRead = 'rag::instances::read',
-  RagInstancesCreate = 'rag::instances::create',
-  RagInstancesEdit = 'rag::instances::edit',
-  RagInstancesDelete = 'rag::instances::delete',
-  RagFilesRead = 'rag::files::read',
-  RagFilesAdd = 'rag::files::add',
-  RagFilesRemove = 'rag::files::remove',
-  RagAdminProvidersRead = 'rag::admin::providers::read',
-  RagAdminProvidersCreate = 'rag::admin::providers::create',
-  RagAdminProvidersEdit = 'rag::admin::providers::edit',
-  RagAdminProvidersDelete = 'rag::admin::providers::delete',
-  RagAdminInstancesRead = 'rag::admin::instances::read',
-  RagAdminInstancesCreate = 'rag::admin::instances::create',
-  RagAdminInstancesEdit = 'rag::admin::instances::edit',
-  RagAdminInstancesDelete = 'rag::admin::instances::delete',
   ModelDownloadsRead = 'model-downloads::read',
   ModelDownloadsCreate = 'model-downloads::create',
   ModelDownloadsCancel = 'model-downloads::cancel',
@@ -1283,236 +1213,6 @@ export interface ProxySettingsResponse {
   username: string
 }
 
-export type RAGChunkSelectionMethod = 'weight' | 'vector'
-
-export interface RAGEngineSettings {
-  simple_graph?: RAGSimpleGraphEngineSettings
-  simple_vector?: RAGSimpleVectorEngineSettings
-}
-
-export type RAGEngineType = 'simple_vector' | 'simple_graph'
-
-export interface RAGFileProcessingStatus {
-  error_message?: string
-  file_id: string
-  filename: string
-  stage?: string
-  started_at?: string
-  status: string
-}
-
-export type RAGIndexingErrorCode = 'text_extraction_failed' | 'unsupported_file_format' | 'file_read_error' | 'chunking_failed' | 'embedding_generation_failed' | 'embedding_model_unavailable' | 'index_storage_failed' | 'content_validation_failed' | 'file_too_large' | 'processing_timeout' | 'processing_error' | 'database_error'
-
-export interface RAGInstance {
-  description?: string
-  age_graph_name?: string
-  created_at: string
-  display_name: string
-  embedding_model_id?: string
-  enabled: boolean
-  engine_settings: RAGEngineSettings
-  engine_type: RAGEngineType
-  error_code?: RAGInstanceErrorCode
-  id: string
-  is_active: boolean
-  is_system: boolean
-  llm_model_id?: string
-  name: string
-  parameters: any
-  project_id?: string
-  provider_id: string
-  status?: RAGInstanceStatus
-  updated_at: string
-  user_id?: string
-}
-
-export type RAGInstanceErrorCode = 'embedding_model_not_config' | 'embedding_model_not_found' | 'embedding_model_test_failed' | 'llm_model_not_config' | 'llm_model_not_found' | 'provider_connection_failed' | 'provider_not_found' | 'rag_instance_not_found' | 'indexing_failed' | 'file_processing_failed' | 'database_error' | 'configuration_error'
-
-export interface RAGInstanceFile {
-  created_at: string
-  file_id: string
-  filename: string
-  id: string
-  processed_at?: string
-  processing_error?: RAGIndexingErrorCode
-  processing_status: RAGProcessingStatus
-  rag_instance_id: string
-  rag_metadata: any
-  updated_at: string
-}
-
-export interface RAGInstanceFilesListResponse {
-  files: RAGInstanceFile[]
-  page: number
-  per_page: number
-  total: number
-}
-
-export interface RAGInstanceFilesQuery {
-  page?: number
-  per_page?: number
-  search?: string
-  status_filter?: RAGProcessingStatus
-}
-
-export interface RAGInstanceListQuery {
-  include_system?: boolean
-  page?: number
-  per_page?: number
-}
-
-export interface RAGInstanceListResponse {
-  instances: RAGInstance[]
-  page: number
-  per_page: number
-  total: number
-}
-
-export type RAGInstanceStatus = 'indexing' | 'finished' | 'error'
-
-export type RAGProcessingStatus = 'pending' | 'processing' | 'completed' | 'failed'
-
-export interface RAGProvider {
-  type: RAGProviderType
-  api_key?: string
-  base_url?: string
-  built_in: boolean
-  can_user_create_instance: boolean
-  created_at: string
-  enabled: boolean
-  id: string
-  name: string
-  proxy_settings?: ProxySettings
-  updated_at: string
-}
-
-export interface RAGProviderListResponse {
-  page: number
-  per_page: number
-  providers: RAGProvider[]
-  total: number
-}
-
-export type RAGProviderType = 'local' | 'lightrag' | 'ragstack' | 'chroma' | 'weaviate' | 'pinecone' | 'custom'
-
-export interface RAGQueryMetadata {
-  chunks_filtered: number
-  chunks_retrieved: number
-  processing_time_ms: number
-  rerank_applied: boolean
-}
-
-export interface RAGQueryRequest {
-  query: string
-}
-
-export interface RAGQueryResponse {
-  files: File[]
-  metadata: RAGQueryMetadata
-  results: RAGSource[]
-  token_usage: RAGTokenUsage
-}
-
-export interface RAGRepository {
-  description?: string
-  auth_token?: string
-  created_at: string
-  enabled: boolean
-  id: string
-  name: string
-  priority: number
-  requires_auth: boolean
-  updated_at: string
-  url: string
-}
-
-export interface RAGRepositoryConnectionTestResponse {
-  available_databases_count?: number
-  message: string
-  success: boolean
-}
-
-export interface RAGRepositoryListResponse {
-  page: number
-  per_page: number
-  repositories: RAGRepository[]
-  total: number
-}
-
-export interface RAGSimpleGraphEngineSettings {
-  indexing?: RAGSimpleGraphIndexingSettings
-  querying?: RAGSimpleGraphQueryingSettings
-}
-
-export interface RAGSimpleGraphIndexingSettings {
-  chunk_overlap_token_size?: number
-  chunk_token_size?: number
-  entity_extract_max_gleaning?: number
-  entity_types?: string[]
-  extraction_language?: string
-  force_llm_summary_on_merge?: number
-  max_graph_nodes?: number
-  summary_max_tokens?: number
-}
-
-export type RAGSimpleGraphQueryMode = 'local' | 'global' | 'hybrid' | 'naive' | 'mix' | 'bypass'
-
-export interface RAGSimpleGraphQueryingSettings {
-  chunk_selection_method?: RAGChunkSelectionMethod
-  chunk_top_k?: number
-  enable_rerank?: boolean
-  max_entity_tokens?: number
-  max_graph_nodes_per_query?: number
-  max_relation_tokens?: number
-  max_total_tokens?: number
-  min_rerank_score?: number
-  prompt_template_post_query?: string
-  prompt_template_pre_query?: string
-  query_mode?: RAGSimpleGraphQueryMode
-  related_chunk_number?: number
-  top_k?: number
-}
-
-export interface RAGSimpleVectorEngineSettings {
-  indexing?: RAGSimpleVectorIndexingSettings
-  querying?: RAGSimpleVectorQueryingSettings
-}
-
-export interface RAGSimpleVectorIndexingSettings {
-  chunk_overlap_token_size?: number
-  chunk_token_size?: number
-  embedding_batch_size?: number
-  max_parallel_insert?: number
-}
-
-export interface RAGSimpleVectorQueryingSettings {
-  chunk_selection_method?: RAGChunkSelectionMethod
-  chunk_top_k?: number
-  enable_rerank?: boolean
-  max_total_tokens?: number
-  min_rerank_score?: number
-  prompt_template_post_query?: string
-  prompt_template_pre_query?: string
-  related_chunk_number?: number
-  similarity_threshold?: number
-  top_k?: number
-}
-
-export interface RAGSource {
-  document: SimpleVectorDocument
-  similarity_score: number
-}
-
-export interface RAGStatusStreamQuery {
-  include_files?: boolean
-}
-
-export interface RAGTokenUsage {
-  embedding_tokens: number
-  max_total_tokens: number
-  total_tokens: number
-}
-
 export interface Repository {
   auth_config?: RepositoryAuthConfig
   auth_type: string
@@ -1604,35 +1304,6 @@ export interface SSEProxyLogsUpdateData {
   timestamp: string
 }
 
-export interface SSERAGInstanceStatusConnectedData {
-  instance_id: string
-}
-
-export interface SSERAGInstanceStatusErrorData {
-  error: string
-  instance_id: string
-}
-
-export interface SSERAGInstanceStatusUpdateData {
-  current_files_processing: RAGFileProcessingStatus[]
-  enabled: boolean
-  error_code?: RAGInstanceErrorCode
-  failed_files: number
-  instance_id: string
-  is_active: boolean
-  name: string
-  processed_files: number
-  processing_files: number
-  total_files: number
-  updated_at: string
-}
-
-export type SSERAGStatusEvent = {
-  connected: SSERAGInstanceStatusConnectedData
-  update: SSERAGInstanceStatusUpdateData
-  error: SSERAGInstanceStatusErrorData
-}
-
 export interface SearchQuery {
   page?: number
   per_page?: number
@@ -1654,19 +1325,6 @@ export interface SetToolGlobalApprovalRequest {
 export interface SimpleResponse {
   message: string
   success: boolean
-}
-
-export interface SimpleVectorDocument {
-  chunk_index: number
-  content: string
-  content_hash: string
-  created_at: string
-  file_id: string
-  id: string
-  metadata: any
-  rag_instance_id: string
-  token_count: number
-  updated_at: string
 }
 
 export interface SourceInfo {
@@ -1851,39 +1509,6 @@ export interface UpdateProxySettingsRequest {
   username: string
 }
 
-export interface UpdateRAGInstanceRequest {
-  description?: string
-  display_name?: string
-  embedding_model_id?: string
-  enabled?: boolean
-  engine_settings?: RAGEngineSettings
-  engine_type?: RAGEngineType
-  error_code?: RAGInstanceErrorCode
-  is_active?: boolean
-  llm_model_id?: string
-  name?: string
-  parameters?: any
-}
-
-export interface UpdateRAGProviderRequest {
-  api_key?: string
-  base_url?: string
-  can_user_create_instance?: boolean
-  enabled?: boolean
-  name?: string
-  proxy_settings?: ProxySettings
-}
-
-export interface UpdateRAGRepositoryRequest {
-  description?: string
-  auth_token?: string
-  enabled?: boolean
-  name?: string
-  priority?: number
-  requires_auth?: boolean
-  url?: string
-}
-
 export interface UpdateRepositoryRequest {
   auth_config?: RepositoryAuthConfig
   auth_type?: string
@@ -1912,7 +1537,6 @@ export interface UpdateUserGroupRequest {
   name?: string
   permissions?: string[]
   provider_ids?: string[]
-  rag_provider_ids?: string[]
 }
 
 export interface UpdateUserPasswordRequest {
@@ -2036,20 +1660,14 @@ export const ApiEndpoints = {
   'Admin.createAssistant': 'POST /api/admin/assistants',
   'Admin.createGroup': 'POST /api/admin/groups',
   'Admin.createProvider': 'POST /api/admin/providers',
-  'Admin.createRAGRepository': 'POST /api/admin/rag/repositories',
-  'Admin.createRagProvider': 'POST /api/admin/rag/providers',
   'Admin.createRepository': 'POST /api/admin/repositories',
-  'Admin.createSystemRagInstance': 'POST /api/admin/rag/providers/{provider_id}/instances',
   'Admin.createUser': 'POST /api/admin/users',
   'Admin.deleteAssistant': 'DELETE /api/admin/assistants/{assistant_id}',
   'Admin.deleteDownload': 'DELETE /api/admin/downloads/{download_id}',
   'Admin.deleteGroup': 'DELETE /api/admin/groups/{group_id}',
   'Admin.deleteModel': 'DELETE /api/admin/models/{model_id}',
   'Admin.deleteProvider': 'DELETE /api/admin/providers/{provider_id}',
-  'Admin.deleteRAGRepository': 'DELETE /api/admin/rag/repositories/{repository_id}',
-  'Admin.deleteRagProvider': 'DELETE /api/admin/rag/providers/{provider_id}',
   'Admin.deleteRepository': 'DELETE /api/admin/repositories/{repository_id}',
-  'Admin.deleteSystemRagInstance': 'DELETE /api/admin/rag/instances/{instance_id}',
   'Admin.deleteUser': 'DELETE /api/admin/users/{user_id}',
   'Admin.disableModel': 'POST /api/admin/models/{model_id}/disable',
   'Admin.downloadFromRepository': 'POST /api/admin/models/initiate-repository-download',
@@ -2064,7 +1682,6 @@ export const ApiEndpoints = {
   'Admin.getGroupMcpServers': 'GET /api/admin/groups/{group_id}/mcp_servers',
   'Admin.getGroupMembers': 'GET /api/admin/groups/{group_id}/members',
   'Admin.getGroupProviders': 'GET /api/admin/groups/{group_id}/providers',
-  'Admin.getGroupRagProviders': 'GET /api/admin/groups/{group_id}/rag_providers',
   'Admin.getHardwareInfo': 'GET /api/admin/hardware',
   'Admin.getModel': 'GET /api/admin/models/{model_id}',
   'Admin.getNgrokSettings': 'GET /api/admin/config/ngrok',
@@ -2072,10 +1689,7 @@ export const ApiEndpoints = {
   'Admin.getProvider': 'GET /api/admin/providers/{provider_id}',
   'Admin.getProviderGroups': 'GET /api/admin/providers/{provider_id}/groups',
   'Admin.getProxySettings': 'GET /api/admin/config/proxy',
-  'Admin.getRAGRepository': 'GET /api/admin/rag/repositories/{repository_id}',
-  'Admin.getRagProvider': 'GET /api/admin/rag/providers/{provider_id}',
   'Admin.getRepository': 'GET /api/admin/repositories/{repository_id}',
-  'Admin.getSystemRagInstance': 'GET /api/admin/rag/instances/{instance_id}',
   'Admin.getUser': 'GET /api/admin/users/{user_id}',
   'Admin.getUserRegistrationStatus': 'GET /api/admin/config/user-registration',
   'Admin.listAllDownloads': 'GET /api/admin/downloads',
@@ -2086,10 +1700,7 @@ export const ApiEndpoints = {
   'Admin.listGroups': 'GET /api/admin/groups',
   'Admin.listProviderModels': 'GET /api/admin/providers/{provider_id}/models',
   'Admin.listProviders': 'GET /api/admin/providers',
-  'Admin.listRAGRepositories': 'GET /api/admin/rag/repositories',
-  'Admin.listRagProviders': 'GET /api/admin/rag/providers',
   'Admin.listRepositories': 'GET /api/admin/repositories',
-  'Admin.listSystemRagInstances': 'GET /api/admin/rag/providers/{provider_id}/instances',
   'Admin.listUsers': 'GET /api/admin/users',
   'Admin.reloadApiProxyServerModels': 'POST /api/admin/api-proxy-server/reload/models',
   'Admin.reloadApiProxyServerTrustedHosts': 'POST /api/admin/api-proxy-server/reload/trusted-hosts',
@@ -2106,8 +1717,6 @@ export const ApiEndpoints = {
   'Admin.subscribeApiProxyServerLogs': 'GET /api/admin/api-proxy-server/logs/stream',
   'Admin.subscribeDownloadProgress': 'GET /api/admin/downloads/subscribe',
   'Admin.subscribeHardwareUsage': 'GET /api/admin/hardware/usage-stream',
-  'Admin.testRAGRepositoryConnection': 'POST /api/admin/rag/repositories/{repository_id}/test-connection',
-  'Admin.testRagProvider': 'POST /api/admin/rag/providers/{provider_id}/test',
   'Admin.testRepositoryConnection': 'POST /api/admin/repositories/test',
   'Admin.toggleUserActive': 'POST /api/admin/users/{user_id}/toggle-active',
   'Admin.updateApiProxyServerConfig': 'PUT /api/admin/api-proxy-server/config',
@@ -2120,10 +1729,7 @@ export const ApiEndpoints = {
   'Admin.updateNgrokSettings': 'PUT /api/admin/config/ngrok',
   'Admin.updateProvider': 'PUT /api/admin/providers/{provider_id}',
   'Admin.updateProxySettings': 'PUT /api/admin/config/proxy',
-  'Admin.updateRAGRepository': 'PUT /api/admin/rag/repositories/{repository_id}',
-  'Admin.updateRagProvider': 'PUT /api/admin/rag/providers/{provider_id}',
   'Admin.updateRepository': 'PUT /api/admin/repositories/{repository_id}',
-  'Admin.updateSystemRagInstance': 'PUT /api/admin/rag/instances/{instance_id}',
   'Admin.updateUser': 'PUT /api/admin/users/{user_id}',
   'Admin.updateUserRegistrationStatus': 'PUT /api/admin/config/user-registration',
   'Admin.uploadAndCommitModel': 'POST /api/admin/uploaded-models/upload-and-commit',
@@ -2210,18 +1816,6 @@ export const ApiEndpoints = {
   'Projects.listProjects': 'GET /api/projects',
   'Projects.updateProject': 'PUT /api/projects/{project_id}',
   'Providers.listEnabledProviders': 'GET /api/providers',
-  'Rag.createInstance': 'POST /api/rag/providers/{provider_id}/instances',
-  'Rag.deleteInstance': 'DELETE /api/rag/instances/{instance_id}',
-  'Rag.deleteInstanceFile': 'DELETE /api/rag/instances/{instance_id}/files/{file_id}',
-  'Rag.getInstance': 'GET /api/rag/instances/{instance_id}',
-  'Rag.listCreatableProviders': 'GET /api/rag/providers',
-  'Rag.listInstanceFiles': 'GET /api/rag/instances/{instance_id}/files',
-  'Rag.listInstances': 'GET /api/rag/instances',
-  'Rag.queryInstance': 'POST /api/rag/instances/{instance_id}/query',
-  'Rag.subscribeInstanceStatus': 'GET /api/rag/instances/{instance_id}/status/stream',
-  'Rag.toggleInstanceActivate': 'PUT /api/rag/instances/{instance_id}/toggle-activate',
-  'Rag.updateInstance': 'PUT /api/rag/instances/{instance_id}',
-  'Rag.uploadInstanceFile': 'POST /api/rag/instances/{instance_id}/files',
   'User.greet': 'POST /api/user/greet',
   'User.updateAccountPassword': 'PUT /api/admin/config/user/password',
   'UserSettings.deleteAllUserSettings': 'DELETE /api/user/settings/all',
@@ -2242,20 +1836,14 @@ export type ApiEndpointParameters = {
   'Admin.createAssistant': CreateAssistantRequest
   'Admin.createGroup': CreateUserGroupRequest
   'Admin.createProvider': CreateProviderRequest
-  'Admin.createRAGRepository': CreateRAGRepositoryRequest
-  'Admin.createRagProvider': CreateRAGProviderRequest
   'Admin.createRepository': CreateRepositoryRequest
-  'Admin.createSystemRagInstance': { provider_id: string } & CreateSystemRAGInstanceRequest
   'Admin.createUser': CreateUserRequest
   'Admin.deleteAssistant': { assistant_id: string }
   'Admin.deleteDownload': { download_id: string }
   'Admin.deleteGroup': { group_id: string }
   'Admin.deleteModel': { model_id: string }
   'Admin.deleteProvider': { provider_id: string }
-  'Admin.deleteRAGRepository': { repository_id: string }
-  'Admin.deleteRagProvider': { provider_id: string }
   'Admin.deleteRepository': { repository_id: string }
-  'Admin.deleteSystemRagInstance': { instance_id: string }
   'Admin.deleteUser': { user_id: string }
   'Admin.disableModel': { model_id: string }
   'Admin.downloadFromRepository': DownloadFromRepositoryRequest
@@ -2270,7 +1858,6 @@ export type ApiEndpointParameters = {
   'Admin.getGroupMcpServers': { group_id: string }
   'Admin.getGroupMembers': { group_id: string } & PaginationQuery
   'Admin.getGroupProviders': { group_id: string } & PaginationQuery
-  'Admin.getGroupRagProviders': { group_id: string } & PaginationQuery
   'Admin.getHardwareInfo': void
   'Admin.getModel': { model_id: string }
   'Admin.getNgrokSettings': void
@@ -2278,10 +1865,7 @@ export type ApiEndpointParameters = {
   'Admin.getProvider': { provider_id: string }
   'Admin.getProviderGroups': { provider_id: string }
   'Admin.getProxySettings': void
-  'Admin.getRAGRepository': { repository_id: string }
-  'Admin.getRagProvider': { provider_id: string }
   'Admin.getRepository': { repository_id: string }
-  'Admin.getSystemRagInstance': { instance_id: string }
   'Admin.getUser': { user_id: string }
   'Admin.getUserRegistrationStatus': void
   'Admin.listAllDownloads': { page?: number; per_page?: number; status?: string }
@@ -2292,10 +1876,7 @@ export type ApiEndpointParameters = {
   'Admin.listGroups': PaginationQuery
   'Admin.listProviderModels': { provider_id: string }
   'Admin.listProviders': PaginationQuery
-  'Admin.listRAGRepositories': PaginationQuery
-  'Admin.listRagProviders': PaginationQuery
   'Admin.listRepositories': PaginationQuery
-  'Admin.listSystemRagInstances': { provider_id: string } & PaginationQuery
   'Admin.listUsers': PaginationQuery
   'Admin.reloadApiProxyServerModels': void
   'Admin.reloadApiProxyServerTrustedHosts': void
@@ -2312,8 +1893,6 @@ export type ApiEndpointParameters = {
   'Admin.subscribeApiProxyServerLogs': void
   'Admin.subscribeDownloadProgress': void
   'Admin.subscribeHardwareUsage': void
-  'Admin.testRAGRepositoryConnection': { repository_id: string }
-  'Admin.testRagProvider': { provider_id: string }
   'Admin.testRepositoryConnection': TestRepositoryConnectionRequest
   'Admin.toggleUserActive': { user_id: string }
   'Admin.updateApiProxyServerConfig': ApiProxyServerConfig
@@ -2326,10 +1905,7 @@ export type ApiEndpointParameters = {
   'Admin.updateNgrokSettings': UpdateNgrokSettingsRequest
   'Admin.updateProvider': { provider_id: string } & UpdateProviderRequest
   'Admin.updateProxySettings': UpdateProxySettingsRequest
-  'Admin.updateRAGRepository': { repository_id: string } & UpdateRAGRepositoryRequest
-  'Admin.updateRagProvider': { provider_id: string } & UpdateRAGProviderRequest
   'Admin.updateRepository': { repository_id: string } & UpdateRepositoryRequest
-  'Admin.updateSystemRagInstance': { instance_id: string } & UpdateRAGInstanceRequest
   'Admin.updateUser': { user_id: string } & UpdateUserRequest
   'Admin.updateUserRegistrationStatus': UpdateUserRegistrationRequest
   'Admin.uploadAndCommitModel': FormData
@@ -2416,18 +1992,6 @@ export type ApiEndpointParameters = {
   'Projects.listProjects': { page?: number; per_page?: number; search?: string }
   'Projects.updateProject': { project_id: string } & UpdateProjectRequest
   'Providers.listEnabledProviders': PaginationQuery
-  'Rag.createInstance': { provider_id: string } & CreateRAGInstanceRequest
-  'Rag.deleteInstance': { instance_id: string }
-  'Rag.deleteInstanceFile': { instance_id: string; file_id: string }
-  'Rag.getInstance': { instance_id: string }
-  'Rag.listCreatableProviders': void
-  'Rag.listInstanceFiles': { instance_id: string; page?: number; per_page?: number; search?: string; status_filter?: RAGProcessingStatus }
-  'Rag.listInstances': { include_system?: boolean; page?: number; per_page?: number }
-  'Rag.queryInstance': { instance_id: string } & RAGQueryRequest
-  'Rag.subscribeInstanceStatus': { instance_id: string; include_files?: boolean }
-  'Rag.toggleInstanceActivate': { instance_id: string }
-  'Rag.updateInstance': { instance_id: string } & UpdateRAGInstanceRequest
-  'Rag.uploadInstanceFile': { instance_id: string } & FormData
   'User.greet': UserHello
   'User.updateAccountPassword': UpdateUserPasswordRequest
   'UserSettings.deleteAllUserSettings': void
@@ -2448,20 +2012,14 @@ export type ApiEndpointResponses = {
   'Admin.createAssistant': Assistant
   'Admin.createGroup': UserGroup
   'Admin.createProvider': Provider
-  'Admin.createRAGRepository': RAGRepository
-  'Admin.createRagProvider': RAGProvider
   'Admin.createRepository': Repository
-  'Admin.createSystemRagInstance': RAGInstance
   'Admin.createUser': User
   'Admin.deleteAssistant': void
   'Admin.deleteDownload': void
   'Admin.deleteGroup': void
   'Admin.deleteModel': void
   'Admin.deleteProvider': void
-  'Admin.deleteRAGRepository': void
-  'Admin.deleteRagProvider': void
   'Admin.deleteRepository': void
-  'Admin.deleteSystemRagInstance': void
   'Admin.deleteUser': void
   'Admin.disableModel': void
   'Admin.downloadFromRepository': DownloadInstance
@@ -2476,7 +2034,6 @@ export type ApiEndpointResponses = {
   'Admin.getGroupMcpServers': string[]
   'Admin.getGroupMembers': UserListResponse
   'Admin.getGroupProviders': ProviderListResponse
-  'Admin.getGroupRagProviders': RAGProviderListResponse
   'Admin.getHardwareInfo': HardwareInfoResponse
   'Admin.getModel': Model
   'Admin.getNgrokSettings': NgrokSettingsResponse
@@ -2484,10 +2041,7 @@ export type ApiEndpointResponses = {
   'Admin.getProvider': Provider
   'Admin.getProviderGroups': UserGroup[]
   'Admin.getProxySettings': ProxySettingsResponse
-  'Admin.getRAGRepository': RAGRepository
-  'Admin.getRagProvider': RAGProvider
   'Admin.getRepository': Repository
-  'Admin.getSystemRagInstance': RAGInstance
   'Admin.getUser': User
   'Admin.getUserRegistrationStatus': UserRegistrationStatusResponse
   'Admin.listAllDownloads': DownloadInstanceListResponse
@@ -2498,10 +2052,7 @@ export type ApiEndpointResponses = {
   'Admin.listGroups': UserGroupListResponse
   'Admin.listProviderModels': Model[]
   'Admin.listProviders': ProviderListResponse
-  'Admin.listRAGRepositories': RAGRepositoryListResponse
-  'Admin.listRagProviders': RAGProviderListResponse
   'Admin.listRepositories': RepositoryListResponse
-  'Admin.listSystemRagInstances': RAGInstanceListResponse
   'Admin.listUsers': UserListResponse
   'Admin.reloadApiProxyServerModels': void
   'Admin.reloadApiProxyServerTrustedHosts': void
@@ -2518,8 +2069,6 @@ export type ApiEndpointResponses = {
   'Admin.subscribeApiProxyServerLogs': SSEProxyLogsEvent
   'Admin.subscribeDownloadProgress': SSEDownloadProgressEvent
   'Admin.subscribeHardwareUsage': SSEHardwareUsageEvent
-  'Admin.testRAGRepositoryConnection': RAGRepositoryConnectionTestResponse
-  'Admin.testRagProvider': void
   'Admin.testRepositoryConnection': TestRepositoryConnectionResponse
   'Admin.toggleUserActive': UserActiveStatusResponse
   'Admin.updateApiProxyServerConfig': ApiProxyServerConfig
@@ -2532,10 +2081,7 @@ export type ApiEndpointResponses = {
   'Admin.updateNgrokSettings': NgrokSettingsResponse
   'Admin.updateProvider': Provider
   'Admin.updateProxySettings': ProxySettingsResponse
-  'Admin.updateRAGRepository': RAGRepository
-  'Admin.updateRagProvider': RAGProvider
   'Admin.updateRepository': Repository
-  'Admin.updateSystemRagInstance': RAGInstance
   'Admin.updateUser': User
   'Admin.updateUserRegistrationStatus': UserRegistrationStatusResponse
   'Admin.uploadAndCommitModel': Model
@@ -2622,18 +2168,6 @@ export type ApiEndpointResponses = {
   'Projects.listProjects': ProjectListResponse
   'Projects.updateProject': Project
   'Providers.listEnabledProviders': ProviderListResponse
-  'Rag.createInstance': RAGInstance
-  'Rag.deleteInstance': void
-  'Rag.deleteInstanceFile': FileOperationSuccessResponse
-  'Rag.getInstance': RAGInstance
-  'Rag.listCreatableProviders': RAGProvider[]
-  'Rag.listInstanceFiles': RAGInstanceFilesListResponse
-  'Rag.listInstances': RAGInstanceListResponse
-  'Rag.queryInstance': RAGQueryResponse
-  'Rag.subscribeInstanceStatus': SSERAGStatusEvent
-  'Rag.toggleInstanceActivate': RAGInstance
-  'Rag.updateInstance': RAGInstance
-  'Rag.uploadInstanceFile': UploadFileResponse
   'User.greet': string
   'User.updateAccountPassword': void
   'UserSettings.deleteAllUserSettings': UserSettingsDeletionResponse

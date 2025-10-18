@@ -7,8 +7,6 @@ import { useTranslation } from 'react-i18next'
 import { useUserAppearanceLanguage } from './store'
 import { ProjectsPage } from './components/Pages/Projects/ProjectsPage'
 import { ProjectDetailsPage } from './components/Pages/Projects/ProjectDetailsPage'
-import { RagsPage } from './components/Pages/Rags/RagsPage'
-import { RagDetailsPage } from './components/Pages/Rags/RagDetailsPage'
 import {
   ExistingChatInterface,
   NewChatInterface,
@@ -34,7 +32,6 @@ import {
   NgrokSettings,
   PrivacySettings,
   ProvidersSettings,
-  RAGProvidersSettings,
   UserGroupsSettings,
   UsersSettings,
 } from './components/Pages/Settings'
@@ -127,36 +124,6 @@ function App() {
                       }
                     />
                     <Route
-                      path="/rags"
-                      element={
-                        <PagePermissionGuard403
-                          permissions={[Permission.RagInstancesRead]}
-                        >
-                          <RagsPage />
-                        </PagePermissionGuard403>
-                      }
-                    />
-                    <Route
-                      path="/rags/:ragInstanceId"
-                      element={
-                        <PagePermissionGuard403
-                          permissions={[Permission.RagInstancesRead]}
-                        >
-                          <RagDetailsPage />
-                        </PagePermissionGuard403>
-                      }
-                    />
-                    <Route
-                      path="/rags/:ragInstanceId/:tab"
-                      element={
-                        <PagePermissionGuard403
-                          permissions={[Permission.RagInstancesRead]}
-                        >
-                          <RagDetailsPage />
-                        </PagePermissionGuard403>
-                      }
-                    />
-                    <Route
                       path="/hub/:activeTab?"
                       element={
                         <PagePermissionGuard403
@@ -196,26 +163,6 @@ function App() {
                             permissions={[Permission.ProvidersRead]}
                           >
                             <ProvidersSettings />
-                          </PagePermissionGuard403>
-                        }
-                      />
-                      <Route
-                        path="rag-providers"
-                        element={
-                          <PagePermissionGuard403
-                            permissions={[Permission.RagProvidersRead]}
-                          >
-                            <RAGProvidersSettings />
-                          </PagePermissionGuard403>
-                        }
-                      />
-                      <Route
-                        path="rag-providers/:providerId"
-                        element={
-                          <PagePermissionGuard403
-                            permissions={[Permission.RagProvidersRead]}
-                          >
-                            <RAGProvidersSettings />
                           </PagePermissionGuard403>
                         }
                       />

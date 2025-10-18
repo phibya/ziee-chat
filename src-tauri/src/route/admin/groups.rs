@@ -1,6 +1,6 @@
 use crate::api;
 use crate::database::models::{
-    ProviderListResponse, RAGProviderListResponse, UserGroup, UserGroupListResponse,
+    ProviderListResponse, UserGroup, UserGroupListResponse,
     UserListResponse,
 };
 use aide::axum::{
@@ -107,16 +107,6 @@ pub fn admin_group_routes() -> ApiRouter {
                     .id("Admin.getGroupProviders")
                     .tag("admin")
                     .response::<200, Json<ProviderListResponse>>()
-            })
-            .layer(middleware::from_fn(api::middleware::groups_read_middleware)),
-        )
-        .api_route(
-            "/groups/{group_id}/rag_providers",
-            get_with(api::user_groups::get_group_rag_providers, |op| {
-                op.description("Get RAG providers assigned to a user group")
-                    .id("Admin.getGroupRagProviders")
-                    .tag("admin")
-                    .response::<200, Json<RAGProviderListResponse>>()
             })
             .layer(middleware::from_fn(api::middleware::groups_read_middleware)),
         )

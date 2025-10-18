@@ -20,9 +20,7 @@ export const ToolSelectionModal = ({
   const form = Form.useFormInstance()
   const selectedTools: Array<{ server_id: string; name: string }> =
     Form.useWatch('enabled_tools', form) || []
-  const selectedRags: string[] = Form.useWatch('enabled_rag_ids', form) || []
   const { servers, tools } = Stores.MCP
-  const { ragInstances } = Stores.RAG
   const windowMinSize = useWindowMinSize()
 
   const availableTools = useMemo(() => {
@@ -34,11 +32,7 @@ export const ToolSelectionModal = ({
     )
   }, [servers, tools])
 
-  const availableRags = useMemo(() => {
-    return ragInstances.filter(rag => rag.enabled && rag.is_active)
-  }, [ragInstances])
-
-  // Initialize with all tools and RAGs enabled by default
+  // Initialize with all tools enabled by default
   useEffect(() => {
     const currentTools = form.getFieldValue('enabled_tools')
     if (
@@ -53,18 +47,7 @@ export const ToolSelectionModal = ({
         })),
       )
     }
-
-    const currentRags = form.getFieldValue('enabled_rag_ids')
-    if (
-      availableRags.length > 0 &&
-      (!currentRags || currentRags.length === 0)
-    ) {
-      form.setFieldValue(
-        'enabled_rag_ids',
-        availableRags.map(rag => rag.id),
-      )
-    }
-  }, [availableTools, availableRags, form])
+  }, [availableTools, form])
 
   // Group tools by server
   const toolsByServer = new Map<string, MCPTool[]>()
@@ -120,32 +103,6 @@ export const ToolSelectionModal = ({
     }
   }
 
-  const handleRagToggle = (ragId: string, checked: boolean) => {
-    if (checked) {
-      form.setFieldValue('enabled_rag_ids', [...selectedRags, ragId])
-    } else {
-      form.setFieldValue(
-        'enabled_rag_ids',
-        selectedRags.filter(id => id !== ragId),
-      )
-    }
-  }
-
-  const allRagsSelected = availableRags.every(rag =>
-    selectedRags.includes(rag.id),
-  )
-
-  const handleAllRagsToggle = (checked: boolean) => {
-    if (checked) {
-      form.setFieldValue(
-        'enabled_rag_ids',
-        availableRags.map(rag => rag.id),
-      )
-    } else {
-      form.setFieldValue('enabled_rag_ids', [])
-    }
-  }
-
   const content = (
     <div
       className={'w-full flex-col px-3 pb-1'}
@@ -154,77 +111,6 @@ export const ToolSelectionModal = ({
         paddingRight: windowMinSize.xs ? 0 : undefined,
       }}
     >
-      {availableRags.length > 0 && (
-        <Collapse
-          className={'w-full !mb-3 !bg-transparent'}
-          items={[
-            {
-              key: 'rags',
-              label: (
-                <Flex justify="space-between" align="center" className="w-full">
-                  <Flex gap={8} align="center">
-                    <Switch
-                      size="small"
-                      checked={allRagsSelected}
-                      onClick={(_, e) => e.stopPropagation()}
-                      onChange={handleAllRagsToggle}
-                    />
-                    <Text strong>RAG</Text>
-                  </Flex>
-                  <Text type="secondary" className="text-xs">
-                    {availableRags.length} instance
-                    {availableRags.length !== 1 ? 's' : ''}
-                  </Text>
-                </Flex>
-              ),
-              children: (
-                <div className="flex flex-col gap-2">
-                  {availableRags.map(rag => {
-                    const isSelected = selectedRags.includes(rag.id)
-                    const hasDescription =
-                      rag.description && rag.description.length > 0
-
-                    return (
-                      <div key={rag.id} className="flex flex-col gap-1">
-                        <div className="flex items-center gap-2">
-                          <Switch
-                            size="small"
-                            checked={isSelected}
-                            onChange={checked =>
-                              handleRagToggle(rag.id, checked)
-                            }
-                          />
-                          <Flex gap={4} align="center">
-                            <Text>{rag.display_name}</Text>
-                            {rag.is_system && (
-                              <Tag color="blue" className="text-xs">
-                                System
-                              </Tag>
-                            )}
-                          </Flex>
-                        </div>
-                        {hasDescription && (
-                          <Paragraph
-                            type="secondary"
-                            className="text-xs !mb-0"
-                            ellipsis={{
-                              rows: 1,
-                              expandable: 'collapsible',
-                            }}
-                          >
-                            {rag.description}
-                          </Paragraph>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              ),
-            },
-          ]}
-        />
-      )}
-
       {/* MCP Tools Section */}
       <Collapse
         className={'w-full !bg-transparent'}
@@ -330,7 +216,7 @@ export const ToolSelectionModal = ({
 
   if (windowMinSize.xs) {
     return (
-      <Drawer title="RAG & Tools" open={visible} onClose={onClose}>
+      <Drawer title="Tools" open={visible} onClose={onClose}>
         {content}
       </Drawer>
     )
@@ -338,7 +224,7 @@ export const ToolSelectionModal = ({
 
   return (
     <Modal
-      title="RAG & Tools"
+      title="Tools"
       open={visible}
       onOk={onClose}
       onCancel={onClose}

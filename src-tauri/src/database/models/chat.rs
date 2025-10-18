@@ -285,7 +285,6 @@ pub struct MessageRow {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct MessageMetadataStruct {
     pub enabled_tools: Option<Vec<crate::api::chat::utils::EnabledMCPTool>>,
-    pub enabled_rag_ids: Option<Vec<Uuid>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -370,7 +369,6 @@ pub struct SaveMessageRequest {
     pub model_id: Uuid,
     pub file_ids: Option<Vec<Uuid>>,
     pub enabled_tools: Option<Vec<crate::api::chat::utils::EnabledMCPTool>>,
-    pub enabled_rag_ids: Option<Vec<Uuid>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

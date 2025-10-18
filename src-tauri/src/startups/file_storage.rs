@@ -1,4 +1,4 @@
-use crate::{api, global::RAG_FILE_STORAGE, utils};
+use crate::{api, utils};
 
 /// Initialize file storage systems
 pub async fn initialize_file_storage() -> Result<(), String> {
@@ -12,13 +12,6 @@ pub async fn initialize_file_storage() -> Result<(), String> {
         eprintln!("Failed to initialize file storage: {:?}", e);
     } else {
         println!("File storage initialized successfully");
-    }
-
-    // Initialize RAG file storage
-    if let Err(e) = RAG_FILE_STORAGE.initialize().await {
-        eprintln!("Failed to initialize RAG file storage: {:?}", e);
-    } else {
-        println!("RAG file storage initialized successfully");
     }
 
     Ok(())

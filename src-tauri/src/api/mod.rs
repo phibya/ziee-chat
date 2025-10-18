@@ -20,7 +20,6 @@ pub mod models;
 pub mod permissions;
 pub mod projects;
 pub mod providers;
-pub mod rag;
 pub mod repositories;
 pub mod types;
 pub mod user;

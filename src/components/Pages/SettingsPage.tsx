@@ -68,16 +68,6 @@ export function SettingsPage() {
             label: t('settings.modelRepository.title'),
           },
           {
-            key: 'rag-providers',
-            icon: <FaRobot />,
-            label: 'RAG Providers',
-          },
-          // {
-          //   key: 'rag-repositories',
-          //   icon: <FaDatabase />,
-          //   label: 'RAG Repositories',
-          // },
-          {
             key: 'engines',
             icon: <FaCogs />,
             label: 'Engines',
@@ -158,20 +148,6 @@ export function SettingsPage() {
             label: t('settings.modelRepository.title'),
           })
         }
-        if (hasPermission([Permission.RagProvidersRead])) {
-          items.push({
-            key: 'rag-providers',
-            icon: <FaRobot />,
-            label: 'RAG Providers',
-          })
-        }
-        // if (hasPermission([Permission.RagRepositoriesRead])) {
-        //   items.push({
-        //     key: 'rag-repositories',
-        //     icon: <FaDatabase />,
-        //     label: 'RAG Repositories',
-        //   })
-        // }
         if (hasPermission([Permission.ConfigProxyRead])) {
           items.push({
             key: 'https-proxy',
