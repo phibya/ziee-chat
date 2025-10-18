@@ -13,6 +13,7 @@ use crate::database::queries::{
     models::{get_model_by_id, get_provider_by_model_id},
 };
 use super::utils::{build_chat_messages, build_tool_definitions};
+use super::rag_mcp_client::get_rag_tools_from_mcp;
 
 use super::helpers::{generate_and_update_conversation_title, send_error};
 use super::tool_handling::{check_and_handle_pending_approval, handle_tool_request};
@@ -195,17 +196,37 @@ pub(super) async fn stream_ai_response(
         let _ = generate_and_update_conversation_title(conversation_id, user_id, &model, &tx).await;
     }
 
-    // Build tool definitions from enabled_tools if provided
-    let tools = if let Some(enabled_tools) = &request.enabled_tools {
-        match build_tool_definitions(enabled_tools).await {
-            Ok(defs) => Some(defs),
-            Err(e) => {
-                eprintln!("Warning: Failed to build tool definitions: {}", e);
-                None
+    // Build tool definitions from enabled_tools and enabled_rag_ids
+    let tools = {
+        let mut all_tools = Vec::new();
+
+        // Add MCP tools (existing user-configured MCP servers)
+        if let Some(enabled_tools) = &request.enabled_tools {
+            match build_tool_definitions(enabled_tools).await {
+                Ok(defs) => all_tools.extend(defs),
+                Err(e) => eprintln!("Warning: Failed to build MCP tool definitions: {}", e),
             }
         }
-    } else {
-        None
+
+        // Add RAG tools from RAG MCP server (filtered by enabled RAG IDs)
+        if let Some(enabled_rag_ids) = &request.enabled_rag_ids {
+            if !enabled_rag_ids.is_empty() {
+                println!("DEBUG: Getting RAG tools from MCP for user {} with {} enabled RAG IDs", user_id, enabled_rag_ids.len());
+                match get_rag_tools_from_mcp(user_id, enabled_rag_ids).await {
+                    Ok(defs) => {
+                        println!("DEBUG: Successfully got {} RAG tools from MCP", defs.len());
+                        all_tools.extend(defs)
+                    },
+                    Err(e) => eprintln!("ERROR: Failed to get RAG tools from MCP: {}", e),
+                }
+            }
+        }
+
+        if all_tools.is_empty() {
+            None
+        } else {
+            Some(all_tools)
+        }
     };
 
     // Create or get the assistant message ID BEFORE streaming

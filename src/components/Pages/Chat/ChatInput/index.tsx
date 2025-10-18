@@ -248,6 +248,9 @@ export const ChatInput = function ChatInput({
           file_ids: [...files.keys(), ...newFiles.keys()],
           enabled_tools:
             enabledTools && enabledTools.length > 0 ? enabledTools : undefined,
+          enabled_rag_ids: formValues.enabled_rag_ids?.length
+            ? formValues.enabled_rag_ids
+            : undefined,
         })
         onDoneEditing?.()
       } catch (error) {
@@ -265,6 +268,9 @@ export const ChatInput = function ChatInput({
       file_ids: [...files.keys(), ...newFiles.keys()],
       enabled_tools:
         enabledTools && enabledTools.length > 0 ? enabledTools : undefined,
+      enabled_rag_ids: formValues.enabled_rag_ids?.length
+        ? formValues.enabled_rag_ids
+        : undefined,
     }
 
     let newFilesBackup = new Map(newFiles)

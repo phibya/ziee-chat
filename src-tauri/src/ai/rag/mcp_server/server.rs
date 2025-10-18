@@ -13,8 +13,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use uuid::Uuid;
 
-use crate::ai::rag::{RAGQuery, QueryMode};
-use crate::database::queries::rag_instances::get_rag_instance_by_id;
 
 // ============================================
 // JSON-RPC 2.0 Types
@@ -58,30 +56,6 @@ struct McpTool {
     input_schema: Value,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct RAGQueryArguments {
-    pub text: String,
-    #[serde(default = "default_query_mode")]
-    pub mode: String,
-}
-
-fn default_query_mode() -> String {
-    "naive".to_string()
-}
-
-impl RAGQueryArguments {
-    fn to_query_mode(&self) -> QueryMode {
-        match self.mode.as_str() {
-            "local" => QueryMode::Local,
-            "global" => QueryMode::Global,
-            "hybrid" => QueryMode::Hybrid,
-            "mix" => QueryMode::Mix,
-            "naive" => QueryMode::Naive,
-            "bypass" => QueryMode::Bypass,
-            _ => QueryMode::Naive,
-        }
-    }
-}
 
 // ============================================
 // Unified RAG MCP Server
@@ -135,88 +109,78 @@ impl UnifiedRagMcpServer {
         }
     }
 
-    /// List all available RAG tools
+    /// List all available RAG tools (from engine tool definitions)
     async fn handle_list_tools(request: &JsonRpcRequest) -> JsonRpcResponse {
         tracing::debug!("Listing all RAG tools");
 
-        // Get all RAG instances from database
+        // Get all enabled and active RAG instances from database
         let pool = match crate::database::get_database_pool() {
             Ok(p) => p,
             Err(e) => {
-                return JsonRpcResponse {
-                    jsonrpc: "2.0".to_string(),
-                    id: request.id.clone(),
-                    result: None,
-                    error: Some(JsonRpcError {
-                        code: -32603,
-                        message: format!("Database error: {}", e),
-                        data: None,
-                    }),
-                };
+                return Self::error_response(request.id.clone(), -32603, &format!("Database error: {}", e));
             }
         };
 
         let instances = match sqlx::query!(
-            r#"SELECT id, display_name, description FROM rag_instances WHERE enabled = true"#
+            r#"SELECT id, display_name, description, engine_type FROM rag_instances WHERE enabled = true AND is_active = true"#
         )
         .fetch_all(pool.as_ref())
         .await
         {
             Ok(rows) => rows,
             Err(e) => {
-                return JsonRpcResponse {
-                    jsonrpc: "2.0".to_string(),
-                    id: request.id.clone(),
-                    result: None,
-                    error: Some(JsonRpcError {
-                        code: -32603,
-                        message: format!("Failed to list instances: {}", e),
-                        data: None,
-                    }),
-                };
+                return Self::error_response(request.id.clone(), -32603, &format!("Failed to list instances: {}", e));
             }
         };
 
-        let tools: Vec<McpTool> = instances
-            .into_iter()
-            .map(|instance| {
-                let tool_name = format!("rag_query_{}", instance.id);
+        let mut all_tools = Vec::new();
+
+        for instance_row in instances {
+            let instance_id = instance_row.id;
+
+            // Create engine to get its tool definitions
+            use crate::ai::rag::engines::RAGEngineFactory;
+            let engine = match RAGEngineFactory::create_engine(instance_id).await {
+                Ok(e) => e,
+                Err(e) => {
+                    tracing::warn!("Failed to create engine for instance {}: {}", instance_id, e);
+                    continue; // Skip on error
+                }
+            };
+
+            let engine_tools = engine.get_tools();
+
+            // Convert engine tools to MCP tools
+            // Tool name format: rag_{instance_id_no_dashes}_{tool_name}
+            // Remove dashes from UUID so we can easily split by underscore
+            let instance_id_str = instance_id.to_string().replace("-", "");
+
+            for engine_tool in engine_tools {
+                let tool_name = format!("rag_{}_{}", instance_id_str, engine_tool.name);
+
+                // Build description: "RAG: {instance_description} - {tool_description}"
+                let rag_desc = instance_row.description.as_deref().unwrap_or(&instance_row.display_name);
                 let description = format!(
-                    "Query RAG instance '{}': {}",
-                    instance.display_name,
-                    instance.description.as_deref().unwrap_or("No description")
+                    "RAG: {} - {}",
+                    rag_desc,
+                    engine_tool.description
                 );
 
-                McpTool {
+                all_tools.push(McpTool {
                     name: tool_name,
                     description,
-                    input_schema: json!({
-                        "type": "object",
-                        "properties": {
-                            "text": {
-                                "type": "string",
-                                "description": "The query text to search for"
-                            },
-                            "mode": {
-                                "type": "string",
-                                "enum": ["naive", "local", "global", "hybrid", "mix", "bypass"],
-                                "default": "naive",
-                                "description": "Query mode (default: naive)"
-                            }
-                        },
-                        "required": ["text"]
-                    }),
-                }
-            })
-            .collect();
+                    input_schema: engine_tool.input_schema,
+                });
+            }
+        }
 
-        tracing::info!("Listed {} RAG tools", tools.len());
+        tracing::info!("Listed {} RAG tools", all_tools.len());
 
         JsonRpcResponse {
             jsonrpc: "2.0".to_string(),
             id: request.id.clone(),
             result: Some(json!({
-                "tools": tools
+                "tools": all_tools
             })),
             error: None,
         }
@@ -226,151 +190,91 @@ impl UnifiedRagMcpServer {
     async fn handle_call_tool(request: &JsonRpcRequest) -> JsonRpcResponse {
         let params = match &request.params {
             Some(p) => p,
-            None => {
-                return JsonRpcResponse {
-                    jsonrpc: "2.0".to_string(),
-                    id: request.id.clone(),
-                    result: None,
-                    error: Some(JsonRpcError {
-                        code: -32602,
-                        message: "Missing params".to_string(),
-                        data: None,
-                    }),
-                };
-            }
+            None => return Self::error_response(request.id.clone(), -32602, "Missing params"),
         };
 
         let tool_name = match params.get("name").and_then(|n| n.as_str()) {
             Some(n) => n,
-            None => {
-                return JsonRpcResponse {
-                    jsonrpc: "2.0".to_string(),
-                    id: request.id.clone(),
-                    result: None,
-                    error: Some(JsonRpcError {
-                        code: -32602,
-                        message: "Missing tool name".to_string(),
-                        data: None,
-                    }),
-                };
-            }
+            None => return Self::error_response(request.id.clone(), -32602, "Missing tool name"),
         };
 
-        let arguments: RAGQueryArguments =
-            match serde_json::from_value(params.get("arguments").cloned().unwrap_or(json!({}))) {
-                Ok(args) => args,
-                Err(e) => {
-                    return JsonRpcResponse {
-                        jsonrpc: "2.0".to_string(),
-                        id: request.id.clone(),
-                        result: None,
-                        error: Some(JsonRpcError {
-                            code: -32602,
-                            message: format!("Invalid arguments: {}", e),
-                            data: None,
-                        }),
-                    };
-                }
-            };
+        let arguments = params.get("arguments").cloned().unwrap_or(json!({}));
 
-        tracing::info!("RAG tool call: {} with query '{}'", tool_name, arguments.text);
+        tracing::info!("RAG tool call: {}", tool_name);
 
-        // Extract instance_id from tool name
-        let instance_id = match Self::parse_instance_id_from_tool(tool_name) {
+        // Parse tool name: "rag_{instance_id_no_dashes}_{tool_name}"
+        // Example: "rag_abc123def456_query" -> parts = ["rag", "abc123def456", "query"]
+        if !tool_name.starts_with("rag_") {
+            return Self::error_response(request.id.clone(), -32602, "Invalid RAG tool name");
+        }
+
+        let parts: Vec<&str> = tool_name.split('_').collect();
+        if parts.len() < 3 {
+            return Self::error_response(request.id.clone(), -32602, "Invalid RAG tool name format");
+        }
+
+        // parts[0] = "rag", parts[1] = instance_id (no dashes), parts[2..] = tool_name
+        let instance_id_str = parts[1];
+        let engine_tool_name = parts[2..].join("_");
+
+        // Parse UUID by adding dashes back in standard format
+        // UUID format: 8-4-4-4-12 characters
+        let uuid_with_dashes = if instance_id_str.len() == 32 {
+            format!(
+                "{}-{}-{}-{}-{}",
+                &instance_id_str[0..8],
+                &instance_id_str[8..12],
+                &instance_id_str[12..16],
+                &instance_id_str[16..20],
+                &instance_id_str[20..32]
+            )
+        } else {
+            return Self::error_response(request.id.clone(), -32602, "Invalid instance ID length");
+        };
+
+        let instance_id = match Uuid::parse_str(&uuid_with_dashes) {
             Ok(id) => id,
-            Err(msg) => {
-                return JsonRpcResponse {
-                    jsonrpc: "2.0".to_string(),
-                    id: request.id.clone(),
-                    result: None,
-                    error: Some(JsonRpcError {
-                        code: -32602,
-                        message: msg,
-                        data: None,
-                    }),
-                };
-            }
+            Err(_) => return Self::error_response(request.id.clone(), -32602, "Invalid instance ID"),
         };
 
-        // Execute the query
-        match Self::execute_rag_query(instance_id, arguments).await {
-            Ok(content) => JsonRpcResponse {
-                jsonrpc: "2.0".to_string(),
-                id: request.id.clone(),
-                result: Some(json!({
-                    "content": [content]
-                })),
-                error: None,
-            },
-            Err(msg) => JsonRpcResponse {
-                jsonrpc: "2.0".to_string(),
-                id: request.id.clone(),
-                result: None,
-                error: Some(JsonRpcError {
-                    code: -32603,
-                    message: msg,
-                    data: None,
-                }),
-            },
-        }
-    }
-
-    /// Parse instance ID from tool name
-    fn parse_instance_id_from_tool(tool_name: &str) -> Result<Uuid, String> {
-        let prefix = "rag_query_";
-        if !tool_name.starts_with(prefix) {
-            return Err(format!("Invalid tool name: {}", tool_name));
-        }
-
-        let id_str = &tool_name[prefix.len()..];
-        Uuid::parse_str(id_str)
-            .map_err(|_| format!("Invalid instance ID in tool name: {}", tool_name))
-    }
-
-    /// Execute RAG query on the specified instance
-    async fn execute_rag_query(
-        instance_id: Uuid,
-        arguments: RAGQueryArguments,
-    ) -> Result<Value, String> {
-        use crate::ai::rag::engines::simple_vector::RAGSimpleVectorEngine;
-        use crate::ai::rag::engines::traits::RAGEngine;
-
-        // Verify instance exists
-        let instance = get_rag_instance_by_id(instance_id)
-            .await
-            .map_err(|e| format!("Database error: {}", e))?
-            .ok_or_else(|| format!("RAG instance not found: {}", instance_id))?;
-
-        if !instance.enabled {
-            return Err(format!("RAG instance is disabled: {}", instance_id));
-        }
-
-        let query = RAGQuery {
-            text: arguments.text.clone(),
-            mode: arguments.to_query_mode(),
+        // Create engine and execute tool
+        use crate::ai::rag::engines::{RAGEngineFactory, traits::RAGToolCall};
+        let engine = match RAGEngineFactory::create_engine(instance_id).await {
+            Ok(e) => e,
+            Err(e) => return Self::error_response(request.id.clone(), -32603, &format!("Failed to create engine: {}", e)),
         };
 
-        // Create RAG engine
-        let engine = RAGSimpleVectorEngine::new(instance_id)
-            .await
-            .map_err(|e| format!("Failed to create RAG engine: {}", e))?;
+        // Execute the specific tool requested by name
+        let call = RAGToolCall {
+            tool_name: engine_tool_name,
+            arguments,
+        };
 
-        // Execute the query through RAG engine
-        let response = engine
-            .query(query)
-            .await
-            .map_err(|e| format!("RAG query failed: {}", e))?;
+        let result = match engine.execute_tool(call).await {
+            Ok(r) => r,
+            Err(e) => return Self::error_response(request.id.clone(), -32603, &format!("Tool execution failed: {}", e)),
+        };
 
-        // Format response as MCP Content
-        Ok(json!({
-            "type": "text",
-            "text": serde_json::to_string_pretty(&json!({
-                "sources": response.sources,
-                "mode_used": format!("{:?}", response.mode_used),
-                "confidence_score": response.confidence_score,
-                "processing_time_ms": response.processing_time_ms,
-                "metadata": response.metadata,
-            })).unwrap_or_default()
-        }))
+        JsonRpcResponse {
+            jsonrpc: "2.0".to_string(),
+            id: request.id.clone(),
+            result: Some(result.result),
+            error: None,
+        }
     }
+
+    /// Helper to create error response
+    fn error_response(id: Option<Value>, code: i32, message: &str) -> JsonRpcResponse {
+        JsonRpcResponse {
+            jsonrpc: "2.0".to_string(),
+            id,
+            result: None,
+            error: Some(JsonRpcError {
+                code,
+                message: message.to_string(),
+                data: None,
+            }),
+        }
+    }
+
 }

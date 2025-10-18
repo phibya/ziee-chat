@@ -3515,6 +3515,7 @@
         "description": "Send message with streaming response",
         "operationId": "Chat.sendMessageStream",
         "requestBody": {
+          "description": "Request structure for sending/editing chat messages",
           "content": {
             "application/json": {
               "schema": {
@@ -3546,6 +3547,7 @@
         "description": "Edit message with streaming response",
         "operationId": "Chat.editMessageStream",
         "requestBody": {
+          "description": "Request structure for sending/editing chat messages",
           "content": {
             "application/json": {
               "schema": {
@@ -6138,6 +6140,7 @@
         }
       },
       "ChatMessageRequest": {
+        "description": "Request structure for sending/editing chat messages",
         "type": "object",
         "properties": {
           "assistant_id": {
@@ -6150,6 +6153,16 @@
           "conversation_id": {
             "type": "string",
             "format": "uuid"
+          },
+          "enabled_rag_ids": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
           },
           "enabled_tools": {
             "type": [
@@ -6190,9 +6203,11 @@
         ]
       },
       "CompleteData": {
+        "description": "Empty event data for Complete event",
         "type": "object"
       },
       "ConnectedData": {
+        "description": "Empty event data for Connected event",
         "type": "object"
       },
       "Conversation": {
@@ -6450,6 +6465,13 @@
       "CreateConversationApprovalRequest": {
         "type": "object",
         "properties": {
+          "approval_message_content_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
           "approved": {
             "type": "boolean"
           },
@@ -8519,15 +8541,6 @@
           "is_desktop"
         ]
       },
-      "JsonOption_for_Array_of_MessageMetadata": {
-        "type": [
-          "array",
-          "null"
-        ],
-        "items": {
-          "$ref": "#/components/schemas/MessageMetadata"
-        }
-      },
       "JsonOption_for_Array_of_string": {
         "type": [
           "array",
@@ -9720,7 +9733,14 @@
             "format": "uuid"
           },
           "metadata": {
-            "$ref": "#/components/schemas/JsonOption_for_Array_of_MessageMetadata"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MessageMetadataStruct"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "originated_from_id": {
             "type": "string",
@@ -9742,7 +9762,6 @@
           "edit_count",
           "created_at",
           "updated_at",
-          "metadata",
           "files",
           "contents"
         ]
@@ -9842,6 +9861,12 @@
                 "const": "tool_call_pending_approval"
               },
               "arguments": true,
+              "is_approved": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
               "server_id": {
                 "type": "string",
                 "format": "uuid"
@@ -10014,33 +10039,29 @@
           "$ref": "#/components/schemas/File"
         }
       },
-      "MessageMetadata": {
+      "MessageMetadataStruct": {
         "type": "object",
         "properties": {
-          "created_at": {
-            "type": "string",
-            "format": "date-time"
+          "enabled_rag_ids": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
           },
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "key": {
-            "type": "string"
-          },
-          "message_id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "value": true
-        },
-        "required": [
-          "id",
-          "message_id",
-          "key",
-          "value",
-          "created_at"
-        ]
+          "enabled_tools": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/EnabledMCPTool"
+            }
+          }
+        }
       },
       "MistralRsCommand": {
         "description": "MistralRS command types for different model formats and use cases",
@@ -12555,6 +12576,18 @@
           {
             "type": "object",
             "properties": {
+              "toolCallPendingApprovalCancel": {
+                "$ref": "#/components/schemas/ToolCallPendingApprovalCancelData"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "toolCallPendingApprovalCancel"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
               "toolResult": {
                 "$ref": "#/components/schemas/ToolResultData"
               }
@@ -13141,6 +13174,7 @@
         ]
       },
       "StreamErrorData": {
+        "description": "Error event data",
         "type": "object",
         "properties": {
           "code": {
@@ -13381,6 +13415,18 @@
           "server_id",
           "arguments",
           "call_id"
+        ]
+      },
+      "ToolCallPendingApprovalCancelData": {
+        "type": "object",
+        "properties": {
+          "message_content_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "message_content_id"
         ]
       },
       "ToolCallPendingApprovalData": {

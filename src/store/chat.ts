@@ -396,6 +396,7 @@ export const createChatStore = (conversation: string | Conversation) => {
                 assistant_id: params.assistant_id,
                 file_ids: params.file_ids,
                 enabled_tools: params.enabled_tools,
+                enabled_rag_ids: params.enabled_rag_ids,
                 message_id: params.message_id,
               },
               { SSE: handlers },
@@ -519,6 +520,7 @@ export const createChatStore = (conversation: string | Conversation) => {
                 content: params.content,
                 file_ids: params.file_ids,
                 enabled_tools: params.enabled_tools,
+                enabled_rag_ids: params.enabled_rag_ids,
               },
               { SSE: handlers },
             )

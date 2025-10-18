@@ -2,11 +2,12 @@
 
 use super::queries;
 use crate::ai::rag::{
-    engines::traits::{RAGEngine, RAGEngineType},
+    engines::traits::{RAGEngine, RAGEngineType, RAGToolDefinition, RAGToolCall, RAGToolResult},
     PipelineStage, ProcessingStatus, RAGErrorCode, RAGInstanceErrorCode, RAGQuery,
-    RAGQueryResponse, RAGResult,
+    RAGQueryResponse, RAGResult, QueryMode,
 };
 use async_trait::async_trait;
+use serde_json::json;
 use uuid::Uuid;
 
 /// Simple Vector RAG Engine
@@ -77,5 +78,54 @@ impl RAGEngine for RAGSimpleVectorEngine {
 
     fn get_capabilities(&self) -> crate::ai::rag::engines::EngineCapabilities {
         crate::ai::rag::engines::EngineCapabilities::for_engine_type(&RAGEngineType::SimpleVector)
+    }
+
+    fn get_tools(&self) -> Vec<RAGToolDefinition> {
+        vec![RAGToolDefinition {
+            name: "query".to_string(),
+            description: "Search the knowledge base for relevant information using semantic similarity.".to_string(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "text": {
+                        "type": "string",
+                        "description": "The search query"
+                    }
+                },
+                "required": ["text"]
+            }),
+        }]
+    }
+
+    async fn execute_tool(&self, call: RAGToolCall) -> RAGResult<RAGToolResult> {
+        match call.tool_name.as_str() {
+            "query" => {
+                let text = call.arguments
+                    .get("text")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| RAGErrorCode::Instance(
+                        RAGInstanceErrorCode::ConfigurationError
+                    ))?;
+
+                let query = RAGQuery {
+                    text: text.to_string(),
+                    mode: QueryMode::Naive, // Default mode
+                };
+
+                let response = self.query(query).await?;
+
+                Ok(RAGToolResult {
+                    success: true,
+                    result: serde_json::to_value(&response)
+                        .map_err(|_| RAGErrorCode::Instance(
+                            RAGInstanceErrorCode::ConfigurationError
+                        ))?,
+                    error_message: None,
+                })
+            }
+            _ => Err(RAGErrorCode::Instance(
+                RAGInstanceErrorCode::ConfigurationError
+            )),
+        }
     }
 }

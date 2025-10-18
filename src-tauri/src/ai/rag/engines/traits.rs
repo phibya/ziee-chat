@@ -39,6 +39,29 @@ impl std::str::FromStr for RAGEngineType {
     }
 }
 
+/// Tool definition for RAG engine capabilities
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RAGToolDefinition {
+    pub name: String,
+    pub description: String,
+    pub input_schema: serde_json::Value,
+}
+
+/// Tool call parameters
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RAGToolCall {
+    pub tool_name: String,
+    pub arguments: serde_json::Value,
+}
+
+/// Tool execution result
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RAGToolResult {
+    pub success: bool,
+    pub result: serde_json::Value,
+    pub error_message: Option<String>,
+}
+
 /// Main RAG engine trait that all engines must implement
 #[async_trait]
 pub trait RAGEngine: Send + Sync {
@@ -59,6 +82,14 @@ pub trait RAGEngine: Send + Sync {
 
     /// Get engine capabilities
     fn get_capabilities(&self) -> crate::ai::rag::engines::EngineCapabilities;
+
+    /// Get available tools for this engine
+    /// Tools are defined per-engine based on capabilities
+    fn get_tools(&self) -> Vec<RAGToolDefinition>;
+
+    /// Execute a tool call
+    /// Routes to appropriate engine method based on tool_name
+    async fn execute_tool(&self, call: RAGToolCall) -> RAGResult<RAGToolResult>;
 }
 
 /// File processing context

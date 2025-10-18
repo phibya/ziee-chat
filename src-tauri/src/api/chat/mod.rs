@@ -18,6 +18,7 @@
 
 mod handlers;
 mod helpers;
+mod rag_mcp_client;
 mod streaming;
 mod tool_handling;
 mod types;
