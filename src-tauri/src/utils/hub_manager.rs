@@ -133,6 +133,10 @@ impl HubManager {
                             let _: HubAssistantsFile = serde_json::from_str(&content)
                                 .map_err(|e| format!("Invalid assistants.json structure: {}", e))?;
                         }
+                        "mcp_servers.json" => {
+                            let _: HubMCPServersFile = serde_json::from_str(&content)
+                                .map_err(|e| format!("Invalid mcp_servers.json structure: {}", e))?;
+                        }
                         _ => {
                             // Generic JSON validation
                             let _: serde_json::Value = serde_json::from_str(&content)
@@ -189,6 +193,14 @@ impl HubManager {
                             };
                             serde_json::to_string_pretty(&empty_assistants)?
                         }
+                        "mcp_servers.json" => {
+                            let empty_mcp_servers = HubMCPServersFile {
+                                hub_version: self.config.hub_version.clone(),
+                                schema_version: 1,
+                                servers: vec![],
+                            };
+                            serde_json::to_string_pretty(&empty_mcp_servers)?
+                        }
                         _ => "{}".to_string(),
                     };
 
@@ -227,12 +239,25 @@ impl HubManager {
             .map_err(|e| format!("Failed to read assistants from APP_DATA_DIR: {}", e))?;
         let assistants_file: HubAssistantsFile = serde_json::from_str(&assistants_content)?;
 
+        // Load MCP servers
+        let mcp_servers_path = hub_dir.join("mcp_servers.json");
+        let mcp_servers = if mcp_servers_path.exists() {
+            let mcp_servers_content = fs::read_to_string(&mcp_servers_path)
+                .await
+                .map_err(|e| format!("Failed to read mcp_servers from APP_DATA_DIR: {}", e))?;
+            let mcp_servers_file: HubMCPServersFile = serde_json::from_str(&mcp_servers_content)?;
+            mcp_servers_file.servers
+        } else {
+            Vec::new()
+        };
+
         // Get last_updated from file modification time (simplified)
         let last_updated_iso = "2024-01-01T00:00:00Z".to_string();
 
         Ok(HubData {
             models: models_file.models,
             assistants: assistants_file.assistants,
+            mcp_servers,
             hub_version: self.config.hub_version.clone(),
             last_updated: last_updated_iso,
         })

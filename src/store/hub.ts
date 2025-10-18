@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
 import { ApiClient } from '../api/client'
-import type { HubAssistant, HubModel } from '../types'
+import type { HubAssistant, HubMCPServer, HubModel } from '../types'
 import i18n from '../i18n'
 import { loadAllAdminModelRepositories } from './admin/repositories.ts'
 import { loadAllModelProviders } from './admin/providers.ts'
@@ -9,19 +9,24 @@ import { loadAllModelProviders } from './admin/providers.ts'
 interface HubState {
   models: HubModel[]
   assistants: HubAssistant[]
+  mcpServers: HubMCPServer[]
   hubVersion: string
   lastUpdated: string
   lastActiveTab: string
   currentLocale: string
   modelsInitialized: boolean
   assistantsInitialized: boolean
+  mcpServersInitialized: boolean
   modelsLoading: boolean
   assistantsLoading: boolean
+  mcpServersLoading: boolean
   modelsError: string | null
   assistantsError: string | null
+  mcpServersError: string | null
   __init__: {
     models: () => Promise<void>
     assistants: () => Promise<void>
+    mcpServers: () => Promise<void>
   }
 }
 
@@ -29,16 +34,20 @@ export const useHubStore = create<HubState>()(
   subscribeWithSelector((_set, _get) => ({
     models: [] as HubModel[],
     assistants: [] as HubAssistant[],
+    mcpServers: [] as HubMCPServer[],
     hubVersion: '',
     lastUpdated: '',
     lastActiveTab: 'models',
     currentLocale: 'en',
     modelsInitialized: false as boolean,
     assistantsInitialized: false as boolean,
+    mcpServersInitialized: false as boolean,
     modelsLoading: false as boolean,
     assistantsLoading: false as boolean,
+    mcpServersLoading: false as boolean,
     modelsError: null as string | null,
     assistantsError: null as string | null,
+    mcpServersError: null as string | null,
     __init__: {
       models: async () => {
         loadAllModelProviders()
@@ -46,6 +55,7 @@ export const useHubStore = create<HubState>()(
         loadHubModels()
       },
       assistants: () => loadHubAssistants(),
+      mcpServers: () => loadHubMCPServers(),
     },
   })),
 )
@@ -202,6 +212,84 @@ export const refreshHubAssistants = async (locale?: string) => {
   }
 }
 
+export const loadHubMCPServers = async (locale?: string) => {
+  const state = useHubStore.getState()
+  const currentLocale = locale || i18n.language || 'en'
+
+  if (state.mcpServersInitialized || state.mcpServersLoading) {
+    return
+  }
+
+  useHubStore.setState({
+    mcpServersLoading: true,
+    mcpServersError: null,
+    currentLocale,
+  })
+
+  try {
+    const mcpServers = await ApiClient.Hub.getHubMCPServers({
+      lang: currentLocale,
+    })
+
+    useHubStore.setState({
+      mcpServers,
+      currentLocale,
+      mcpServersInitialized: true,
+      mcpServersLoading: false,
+      mcpServersError: null,
+    })
+
+    console.log(
+      `Hub MCP servers loaded: ${mcpServers.length} servers - locale: ${currentLocale}`,
+    )
+  } catch (error) {
+    console.error('Hub MCP servers loading failed:', error)
+    useHubStore.setState({
+      mcpServersLoading: false,
+      mcpServersError: error instanceof Error ? error.message : 'Unknown error',
+      mcpServersInitialized: false,
+    })
+    throw error
+  }
+}
+
+export const refreshHubMCPServers = async (locale?: string) => {
+  const state = useHubStore.getState()
+  const currentLocale = locale || state.currentLocale || 'en'
+
+  if (state.mcpServersLoading) {
+    return
+  }
+
+  useHubStore.setState({ mcpServersLoading: true, mcpServersError: null })
+
+  try {
+    await ApiClient.Hub.refreshHubData({ lang: currentLocale })
+    const mcpServers = await ApiClient.Hub.getHubMCPServers({
+      lang: currentLocale,
+    })
+
+    useHubStore.setState({
+      mcpServers,
+      currentLocale,
+      mcpServersLoading: false,
+      mcpServersError: null,
+    })
+
+    console.log(
+      `Hub MCP servers refreshed: ${mcpServers.length} servers - locale: ${currentLocale}`,
+    )
+    return mcpServers
+  } catch (error) {
+    console.error('Hub MCP servers refresh failed:', error)
+    useHubStore.setState({
+      mcpServersLoading: false,
+      mcpServersError: error instanceof Error ? error.message : 'Unknown error',
+    })
+    throw error
+  }
+}
+
 export const getHubVersion = async (): Promise<string> => {
   try {
     const response = await ApiClient.Hub.getHubVersion()
@@ -281,6 +369,41 @@ export const searchAssistants = (
   )
 }
 
+export const getMCPServersByCategory = (
+  servers: HubMCPServer[],
+): Record<string, HubMCPServer[]> => {
+  const categories: Record<string, HubMCPServer[]> = {}
+
+  servers.forEach(server => {
+    const category =
+      server.category.charAt(0).toUpperCase() + server.category.slice(1)
+
+    if (!categories[category]) {
+      categories[category] = []
+    }
+    categories[category].push(server)
+  })
+
+  return categories
+}
+
+export const searchMCPServers = (
+  servers: HubMCPServer[],
+  query: string,
+): HubMCPServer[] => {
+  if (!query.trim()) return servers
+
+  const searchTerm = query.toLowerCase()
+  return servers.filter(
+    server =>
+      server.name.toLowerCase().includes(searchTerm) ||
+      server.display_name.toLowerCase().includes(searchTerm) ||
+      server.description?.toLowerCase().includes(searchTerm) ||
+      server.tags.some(tag => tag.toLowerCase().includes(searchTerm)) ||
+      server.category.toLowerCase().includes(searchTerm),
+  )
+}
+
 // Set the last active tab
 export const setHubActiveTab = (tab: string) => {
   useHubStore.setState({ lastActiveTab: tab })
@@ -304,6 +427,11 @@ export const handleLanguageChange = async (newLocale: string) => {
     // Reload assistants if they were initialized
     if (currentState.assistantsInitialized) {
       await loadHubAssistants(newLocale)
+    }
+
+    // Reload MCP servers if they were initialized
+    if (currentState.mcpServersInitialized) {
+      await loadHubMCPServers(newLocale)
     }
   }
 }

@@ -3593,6 +3593,43 @@
         }
       }
     },
+    "/api/hub/mcp-servers": {
+      "get": {
+        "tags": [
+          "hub"
+        ],
+        "description": "Get hub MCP servers with locale support",
+        "operationId": "Hub.getHubMCPServers",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "lang",
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "style": "form"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HubMCPServer"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/hub/refresh": {
       "post": {
         "tags": [
@@ -7226,6 +7263,184 @@
           "capabilities_required"
         ]
       },
+      "HubMCPServer": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "args": true,
+          "author": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "category": {
+            "type": "string"
+          },
+          "command": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "documentation_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "download_count": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "environment_variables": true,
+          "example_prompts": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "example_tools": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "headers": true,
+          "homepage": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "icon_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "license": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "minimum_version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "platform_support": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "popularity_score": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "float"
+          },
+          "rating": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "float"
+          },
+          "repository_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "requires_desktop": {
+            "type": "boolean"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "tool_categories": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "tool_count": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "transport_type": {
+            "type": "string"
+          },
+          "url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "use_cases": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "display_name",
+          "category",
+          "tags",
+          "transport_type",
+          "requires_desktop",
+          "platform_support"
+        ]
+      },
       "HubModel": {
         "type": "object",
         "properties": {
@@ -9807,6 +10022,7 @@
           "config::ngrok::stop",
           "hub::models::read",
           "hub::assistants::read",
+          "hub::mcp-servers::read",
           "hub::refresh",
           "hub::version::read",
           "mcp::servers::read",

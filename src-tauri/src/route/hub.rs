@@ -1,5 +1,5 @@
 use crate::api;
-use crate::api::hub::{HubAssistant, HubModel, HubVersionResponse};
+use crate::api::hub::{HubAssistant, HubMCPServer, HubModel, HubVersionResponse};
 use aide::axum::{
     routing::{get_with, post_with},
     ApiRouter,
@@ -30,6 +30,18 @@ pub fn hub_routes() -> ApiRouter {
             })
             .layer(middleware::from_fn(
                 crate::api::middleware::hub_assistants_read_middleware,
+            )),
+        )
+        .api_route(
+            "/hub/mcp-servers",
+            get_with(api::hub::get_hub_data_mcp_servers, |op| {
+                op.description("Get hub MCP servers with locale support")
+                    .id("Hub.getHubMCPServers")
+                    .tag("hub")
+                    .response::<200, Json<Vec<HubMCPServer>>>()
+            })
+            .layer(middleware::from_fn(
+                crate::api::middleware::hub_mcp_servers_read_middleware,
             )),
         )
         .api_route(

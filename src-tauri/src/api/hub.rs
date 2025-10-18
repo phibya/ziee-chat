@@ -50,6 +50,52 @@ pub struct HubAssistant {
     pub example_prompts: Option<Vec<String>>,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+pub struct HubMCPServer {
+    pub id: String,
+    pub name: String,
+    pub display_name: String,
+    pub description: Option<String>,
+    pub category: String,
+    pub tags: Vec<String>,
+    pub transport_type: String,
+
+    // Installation details
+    pub command: Option<String>,
+    pub args: Option<serde_json::Value>,
+    pub environment_variables: Option<serde_json::Value>,
+    pub url: Option<String>,
+    pub headers: Option<serde_json::Value>,
+
+    // Metadata
+    pub author: Option<String>,
+    pub homepage: Option<String>,
+    pub repository_url: Option<String>,
+    pub documentation_url: Option<String>,
+    pub icon_url: Option<String>,
+    pub version: Option<String>,
+    pub license: Option<String>,
+
+    // Popularity and quality indicators
+    pub popularity_score: Option<f32>,
+    pub download_count: Option<i32>,
+    pub rating: Option<f32>,
+
+    // Requirements
+    pub requires_desktop: bool,
+    pub platform_support: Vec<String>,
+    pub minimum_version: Option<String>,
+
+    // Tool information
+    pub tool_count: Option<i32>,
+    pub tool_categories: Option<Vec<String>>,
+    pub example_tools: Option<Vec<String>>,
+
+    // Usage examples
+    pub use_cases: Option<Vec<String>>,
+    pub example_prompts: Option<Vec<String>>,
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct HubModelsFile {
     pub hub_version: String,
@@ -64,10 +110,18 @@ pub struct HubAssistantsFile {
     pub assistants: Vec<HubAssistant>,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct HubMCPServersFile {
+    pub hub_version: String,
+    pub schema_version: u32,
+    pub servers: Vec<HubMCPServer>,
+}
+
 #[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct HubData {
     pub models: Vec<HubModel>,
     pub assistants: Vec<HubAssistant>,
+    pub mcp_servers: Vec<HubMCPServer>,
     pub hub_version: String,
     pub last_updated: String,
 }
@@ -209,6 +263,72 @@ pub async fn get_hub_data_assistants(
                     Err((
                         StatusCode::INTERNAL_SERVER_ERROR,
                         AppError::internal_error("Failed to load hub assistants"),
+                    ))
+                }
+            }
+        }
+    } else {
+        eprintln!("API: Hub manager not initialized");
+        Err((
+            StatusCode::SERVICE_UNAVAILABLE,
+            AppError::internal_error("Hub manager not initialized"),
+        ))
+    }
+}
+
+#[debug_handler]
+pub async fn get_hub_data_mcp_servers(
+    Query(params): Query<HubQueryParams>,
+) -> ApiResult<Json<Vec<HubMCPServer>>> {
+    let locale = params.lang.unwrap_or_else(|| "en".to_string());
+    println!(
+        "API: Received request for hub MCP servers with locale: {}",
+        locale
+    );
+
+    let hub_manager_guard = HUB_MANAGER.lock().await;
+    if let Some(manager) = hub_manager_guard.as_ref() {
+        println!(
+            "API: Hub manager found, loading MCP servers with locale: {}",
+            locale
+        );
+        match manager.load_hub_data_with_locale(&locale).await {
+            Ok(data) => {
+                println!(
+                    "API: Successfully loaded hub MCP servers - {} servers (locale: {})",
+                    data.mcp_servers.len(),
+                    locale
+                );
+                Ok((StatusCode::OK, Json(data.mcp_servers)))
+            }
+            Err(e) => {
+                eprintln!(
+                    "API: Failed to load hub MCP servers from APP_DATA_DIR with locale {}: {}",
+                    locale, e
+                );
+                // Fallback to English if locale loading fails
+                if locale != "en" {
+                    println!("API: Falling back to English locale");
+                    match manager.load_hub_data_with_locale("en").await {
+                        Ok(data) => {
+                            println!(
+                                "API: Successfully loaded fallback hub MCP servers - {} servers",
+                                data.mcp_servers.len()
+                            );
+                            Ok((StatusCode::OK, Json(data.mcp_servers)))
+                        }
+                        Err(fallback_e) => {
+                            eprintln!("API: Failed to load fallback hub MCP servers: {}", fallback_e);
+                            Err((
+                                StatusCode::INTERNAL_SERVER_ERROR,
+                                AppError::internal_error("Failed to load hub MCP servers"),
+                            ))
+                        }
+                    }
+                } else {
+                    Err((
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        AppError::internal_error("Failed to load hub MCP servers"),
                     ))
                 }
             }

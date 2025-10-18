@@ -2,6 +2,7 @@ import {
   AppstoreOutlined,
   ReloadOutlined,
   RobotOutlined,
+  ApiOutlined,
 } from '@ant-design/icons'
 import { App, Button, Dropdown, Flex, Segmented, theme, Typography } from 'antd'
 import React, { useEffect } from 'react'
@@ -10,11 +11,13 @@ import { TitleBarWrapper } from '../../common/TitleBarWrapper'
 import { TauriDragRegion } from '../../common/TauriDragRegion'
 import {
   refreshHubAssistants,
+  refreshHubMCPServers,
   refreshHubModels,
   setHubActiveTab,
 } from '../../../store/hub'
 import { ModelsTab } from './ModelsTab'
 import { AssistantsTab } from './AssistantsTab'
+import { MCPServersTab } from './MCPServersTab'
 import { Stores } from '../../../store'
 import { useMainContentMinSize } from '../../hooks/useWindowMinSize.ts'
 import { IoIosArrowDown, IoIosArrowForward } from 'react-icons/io'
@@ -34,10 +37,11 @@ export function HubPage() {
   const { token } = theme.useToken()
 
   // Hub store state
-  const { modelsLoading, assistantsLoading, lastActiveTab } = Stores.Hub
+  const { modelsLoading, assistantsLoading, mcpServersLoading, lastActiveTab } =
+    Stores.Hub
 
   // Valid tab names
-  const validTabs = ['models', 'assistants']
+  const validTabs = ['models', 'assistants', 'mcp-servers']
 
   // Default to lastActiveTab from store if no URL tab, otherwise use URL tab or 'models'
   const activeTab =
@@ -52,6 +56,7 @@ export function HubPage() {
     const availabelTabs = [
       hasPermission([Permission.HubModelsRead]) && 'models',
       hasPermission([Permission.HubAssistantsRead]) && 'assistants',
+      hasPermission([Permission.HubMcpServersRead]) && 'mcp-servers',
     ].filter(Boolean) as string[]
 
     if (!availabelTabs.includes(activeTab)) {
@@ -82,6 +87,9 @@ export function HubPage() {
       } else if (activeTab === 'assistants') {
         await refreshHubAssistants()
         message.success('Hub assistants refreshed successfully')
+      } else if (activeTab === 'mcp-servers') {
+        await refreshHubMCPServers()
+        message.success('Hub MCP servers refreshed successfully')
       }
     } catch (err) {
       console.error('Failed to refresh hub data:', err)
@@ -139,6 +147,15 @@ export function HubPage() {
                         </Flex>
                       ),
                     },
+                    hasPermission([Permission.HubMcpServersRead]) && {
+                      value: 'mcp-servers',
+                      label: (
+                        <Flex align="center" gap={4}>
+                          <ApiOutlined />
+                          MCP Servers
+                        </Flex>
+                      ),
+                    },
                   ].filter(e => !!e) as {
                     value: string
                     label: React.ReactNode
@@ -173,6 +190,15 @@ export function HubPage() {
                         </Flex>
                       ),
                     },
+                    hasPermission([Permission.HubMcpServersRead]) && {
+                      key: 'mcp-servers',
+                      label: (
+                        <Flex className={'gap-2'}>
+                          <ApiOutlined />
+                          MCP Servers
+                        </Flex>
+                      ),
+                    },
                   ].filter(e => !!e) as {
                     key: string
                     label: React.ReactNode
@@ -190,11 +216,17 @@ export function HubPage() {
                     <PermissionGuard permissions={[Permission.HubModelsRead]}>
                       <AppstoreOutlined /> Models
                     </PermissionGuard>
-                  ) : (
+                  ) : activeTab === 'assistants' ? (
                     <PermissionGuard
                       permissions={[Permission.HubAssistantsRead]}
                     >
                       <RobotOutlined /> Assistants
+                    </PermissionGuard>
+                  ) : (
+                    <PermissionGuard
+                      permissions={[Permission.HubMcpServersRead]}
+                    >
+                      <ApiOutlined /> MCP Servers
                     </PermissionGuard>
                   )}{' '}
                   <IoIosArrowDown />
@@ -206,7 +238,7 @@ export function HubPage() {
           <Button
             icon={<ReloadOutlined />}
             onClick={handleRefresh}
-            loading={modelsLoading || assistantsLoading}
+            loading={modelsLoading || assistantsLoading || mcpServersLoading}
             type="text"
           >
             {mainContentMinSize.xs ? null : 'Refresh'}
@@ -224,11 +256,17 @@ export function HubPage() {
                   >
                     <ModelsTab />
                   </PagePermissionGuard403>
-                ) : (
+                ) : activeTab === 'assistants' ? (
                   <PagePermissionGuard403
                     permissions={[Permission.HubAssistantsRead]}
                   >
                     <AssistantsTab />
+                  </PagePermissionGuard403>
+                ) : (
+                  <PagePermissionGuard403
+                    permissions={[Permission.HubMcpServersRead]}
+                  >
+                    <MCPServersTab />
                   </PagePermissionGuard403>
                 )}
               </div>

@@ -200,6 +200,8 @@ pub enum Permission {
     HubModelsRead,
     #[serde(rename = "hub::assistants::read")]
     HubAssistantsRead,
+    #[serde(rename = "hub::mcp-servers::read")]
+    HubMcpServersRead,
     #[serde(rename = "hub::refresh")]
     HubRefresh,
     #[serde(rename = "hub::version::read")]
@@ -351,6 +353,7 @@ impl Permission {
             // Hub permissions
             Permission::HubModelsRead => "hub::models::read",
             Permission::HubAssistantsRead => "hub::assistants::read",
+            Permission::HubMcpServersRead => "hub::mcp-servers::read",
             Permission::HubRefresh => "hub::refresh",
             Permission::HubVersionRead => "hub::version::read",
 

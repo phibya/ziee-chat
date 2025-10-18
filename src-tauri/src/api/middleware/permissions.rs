@@ -200,6 +200,10 @@ permission_middleware!(
     hub_assistants_read_middleware,
     Permission::HubAssistantsRead
 );
+permission_middleware!(
+    hub_mcp_servers_read_middleware,
+    Permission::HubMcpServersRead
+);
 permission_middleware!(hub_refresh_middleware, Permission::HubRefresh);
 permission_middleware!(hub_version_read_middleware, Permission::HubVersionRead);
 
