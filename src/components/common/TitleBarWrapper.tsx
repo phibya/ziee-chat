@@ -27,7 +27,7 @@ export const TitleBarWrapper = ({
               : 12,
         paddingRight: isTauriView && !isFullscreen && !isMacOS ? 100 : 12,
         borderColor: token.colorBorderSecondary,
-        backgroundColor: token.colorBgLayout,
+        // backgroundColor: token.colorBgLayout,
         ...style,
       }}
     >

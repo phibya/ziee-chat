@@ -46,6 +46,7 @@ function SidebarItem({ icon, label, isActive, to }: SidebarItemProps) {
         textDecoration: 'none',
         backgroundColor: isActive ? token.colorPrimary : 'transparent',
         color: isActive ? token.colorTextLightSolid : token.colorTextBase,
+        borderRadius: token.borderRadius,
       }}
       onMouseEnter={e => {
         if (!isActive) {

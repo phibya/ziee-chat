@@ -98,7 +98,11 @@ export function MCPServerCard({
 
   return (
     <>
-      <Card>
+      <Card
+        classNames={{
+          body: '!p-3',
+        }}
+      >
         <div className="flex items-start gap-3 flex-wrap">
           {/* Server Info */}
           <div className="flex-1">
