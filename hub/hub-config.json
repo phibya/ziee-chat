@@ -4,7 +4,8 @@
   "github_branch": "main",
   "hub_files": [
     "models.json",
-    "assistants.json"
+    "assistants.json",
+    "mcp_servers.json"
   ],
   "i18n_supported_languages": [
     "vi",
@@ -12,7 +13,8 @@
   ],
   "i18n_files": [
     "models.json",
-    "assistants.json"
+    "assistants.json",
+    "mcp_servers.json"
   ],
   "fallback_enabled": true,
   "update_check_interval_hours": 24
