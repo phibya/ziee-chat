@@ -452,3 +452,120 @@ pub async fn reset_user_password_with_service(
 
     Ok(result.rows_affected() > 0)
 }
+
+/// Alias for get_user_by_id (for compatibility with user provisioning)
+pub async fn get_by_id(user_id: Uuid) -> Result<Option<User>, sqlx::Error> {
+    get_user_by_id(user_id).await
+}
+
+/// Create a user without password (for external auth providers)
+pub async fn create_user(
+    username: &str,
+    emails: &[UserEmail],
+    profile: Option<serde_json::Value>,
+    _services: UserServices,
+    group_ids: Vec<Uuid>,
+) -> Result<User, sqlx::Error> {
+    let pool = get_database_pool()?;
+    let mut tx = pool.begin().await?;
+
+    // Insert user
+    let user_base = sqlx::query_as!(
+        UserBase,
+        "INSERT INTO users (username, profile, is_protected) VALUES ($1, $2, false) RETURNING id, username, created_at, profile, is_active, is_protected, last_login_at, updated_at",
+        username,
+        profile as _
+    )
+    .fetch_one(&mut *tx)
+    .await?;
+
+    // Insert emails
+    let mut email_dbs = Vec::new();
+    for email in emails {
+        let email_db = sqlx::query_as!(
+            UserEmail,
+            "INSERT INTO user_emails (user_id, address, verified) VALUES ($1, $2, $3) RETURNING id, user_id, address, verified, created_at",
+            user_base.id,
+            &email.address,
+            email.verified
+        )
+        .fetch_one(&mut *tx)
+        .await?;
+        email_dbs.push(email_db);
+    }
+
+    tx.commit().await?;
+
+    let user = User::from_db_parts(user_base, email_dbs, vec![], vec![], vec![]);
+
+    // Assign user to specified groups
+    if !group_ids.is_empty() {
+        if let Err(e) = update_user_groups(user.id, group_ids).await {
+            eprintln!("Warning: Failed to assign user to groups: {}", e);
+        }
+    } else {
+        // If no groups specified, assign to default group
+        if let Err(e) =
+            crate::database::queries::user_groups::assign_user_to_default_group(user.id).await
+        {
+            eprintln!("Warning: Failed to assign user to default group: {}", e);
+        }
+    }
+
+    // Clone default assistants for new user
+    if let Err(e) = clone_default_assistants_for_user(user.id).await {
+        eprintln!(
+            "Warning: Failed to clone default assistants for user: {}",
+            e
+        );
+    }
+
+    Ok(user)
+}
+
+/// Update user profile (for user provisioning)
+pub async fn update_user_profile(
+    user_id: Uuid,
+    profile: serde_json::Value,
+) -> Result<(), sqlx::Error> {
+    let pool = get_database_pool()?;
+
+    sqlx::query!(
+        "UPDATE users SET profile = $1, updated_at = NOW() WHERE id = $2",
+        profile as _,
+        user_id
+    )
+    .execute(&*pool)
+    .await?;
+
+    Ok(())
+}
+
+/// Update user group memberships (for user provisioning)
+pub async fn update_user_groups(
+    user_id: Uuid,
+    group_ids: Vec<Uuid>,
+) -> Result<(), sqlx::Error> {
+    let pool = get_database_pool()?;
+    let mut tx = pool.begin().await?;
+
+    // Remove all existing group assignments
+    sqlx::query!("DELETE FROM user_group_memberships WHERE user_id = $1", user_id)
+        .execute(&mut *tx)
+        .await?;
+
+    // Add new group assignments
+    for group_id in group_ids {
+        sqlx::query!(
+            "INSERT INTO user_group_memberships (user_id, group_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+            user_id,
+            group_id
+        )
+        .execute(&mut *tx)
+        .await?;
+    }
+
+    tx.commit().await?;
+
+    Ok(())
+}

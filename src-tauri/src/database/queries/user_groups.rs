@@ -336,3 +336,21 @@ pub async fn get_group_members(
         per_page,
     })
 }
+
+/// Get user group by name (for user provisioning)
+pub async fn get_by_name(name: &str) -> Result<Option<UserGroup>, sqlx::Error> {
+    let pool = get_database_pool()?;
+
+    let group = sqlx::query_as!(
+        UserGroup,
+        r#"SELECT id, name, description,
+        permissions,
+        is_protected, is_active, created_at, updated_at
+        FROM user_groups WHERE name = $1"#,
+        name
+    )
+    .fetch_optional(&*pool)
+    .await?;
+
+    Ok(group)
+}

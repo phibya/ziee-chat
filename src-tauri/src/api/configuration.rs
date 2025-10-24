@@ -1,7 +1,7 @@
 use crate::api::app::is_desktop_app;
 use crate::api::errors::{ApiResult, AppError};
 use crate::api::middleware::AuthenticatedUser;
-use crate::auth::AuthService;
+use crate::auth_jwt::AuthService;
 use crate::database::queries::configuration::{
     get_default_language, get_ngrok_settings, get_proxy_no_proxy, get_proxy_password,
     get_proxy_url, get_proxy_username, is_proxy_enabled, is_proxy_ignore_ssl_certificates,

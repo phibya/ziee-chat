@@ -190,6 +190,13 @@ export function SettingsPage() {
             label: t('settings.userGroups'),
           })
         }
+        if (hasPermission([Permission.AuthProvidersRead])) {
+          items.push({
+            key: 'auth-providers',
+            icon: <FaShieldAlt />,
+            label: 'Authentication',
+          })
+        }
         if (hasPermission([Permission.HardwareRead])) {
           items.push({
             key: 'hardware',

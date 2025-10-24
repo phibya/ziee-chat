@@ -1,4 +1,4 @@
-use crate::auth::AuthService;
+use crate::auth_jwt::AuthService;
 use crate::database::models::User;
 use axum::{
     extract::Request,

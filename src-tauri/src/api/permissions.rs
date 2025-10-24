@@ -231,6 +231,24 @@ pub enum Permission {
     #[serde(rename = "mcp::admin::servers::delete")]
     McpAdminServersDelete,
 
+    // Auth Provider permissions
+    #[serde(rename = "auth-providers::read")]
+    AuthProvidersRead,
+    #[serde(rename = "auth-providers::create")]
+    AuthProvidersCreate,
+    #[serde(rename = "auth-providers::edit")]
+    AuthProvidersEdit,
+    #[serde(rename = "auth-providers::delete")]
+    AuthProvidersDelete,
+    #[serde(rename = "auth-providers::test")]
+    AuthProvidersTest,
+
+    // Auth Configuration permissions
+    #[serde(rename = "config::auth::read")]
+    ConfigAuthRead,
+    #[serde(rename = "config::auth::edit")]
+    ConfigAuthEdit,
+
     // Wildcard permissions
     #[serde(rename = "*")]
     All,
@@ -370,6 +388,17 @@ impl Permission {
             Permission::McpAdminServersCreate => "mcp::admin::servers::create",
             Permission::McpAdminServersEdit => "mcp::admin::servers::edit",
             Permission::McpAdminServersDelete => "mcp::admin::servers::delete",
+
+            // Auth Provider permissions
+            Permission::AuthProvidersRead => "auth-providers::read",
+            Permission::AuthProvidersCreate => "auth-providers::create",
+            Permission::AuthProvidersEdit => "auth-providers::edit",
+            Permission::AuthProvidersDelete => "auth-providers::delete",
+            Permission::AuthProvidersTest => "auth-providers::test",
+
+            // Auth Configuration permissions
+            Permission::ConfigAuthRead => "config::auth::read",
+            Permission::ConfigAuthEdit => "config::auth::edit",
 
             // Wildcard permissions
             Permission::All => "*",

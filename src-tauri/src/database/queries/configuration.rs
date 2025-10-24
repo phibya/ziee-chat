@@ -256,3 +256,8 @@ pub async fn set_proxy_no_proxy(no_proxy: &str) -> Result<(), sqlx::Error> {
     settings.no_proxy = no_proxy.to_string();
     set_proxy_settings(&settings).await
 }
+
+/// Get a string configuration value (for user provisioning)
+pub async fn get_string(key: &str) -> Result<Option<String>, sqlx::Error> {
+    get_config_value::<String>(key).await
+}

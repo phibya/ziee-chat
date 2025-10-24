@@ -1,5 +1,5 @@
 use crate::api;
-use crate::api::auth::{AuthResponse, InitResponse};
+use crate::api::auth::{AuthResponse, InitResponse, OAuthLoginResponse};
 use crate::api::permissions::Permission;
 use crate::database::models::User;
 use crate::route::helper::types;
@@ -52,6 +52,24 @@ pub fn auth_routes() -> ApiRouter {
             get_with(types, |op| {
                 op.description("Types for open api generation")
                     .response::<600, Json<Permission>>()
+            }),
+        )
+        .api_route(
+            "/auth/oauth/{provider_id}/init",
+            post_with(api::auth::init_oauth_login, |op| {
+                op.description("Initiate OAuth/OIDC authentication flow")
+                    .id("Auth.initOAuth")
+                    .tag("auth")
+                    .response::<200, Json<OAuthLoginResponse>>()
+            }),
+        )
+        .api_route(
+            "/auth/oauth/{provider_id}/callback",
+            get_with(api::auth::oauth_callback, |op| {
+                op.description("Handle OAuth/OIDC callback")
+                    .id("Auth.oauthCallback")
+                    .tag("auth")
+                    .response::<200, Json<AuthResponse>>()
             }),
         )
 }

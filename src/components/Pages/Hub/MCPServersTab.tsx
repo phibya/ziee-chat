@@ -101,7 +101,9 @@ export function MCPServersTab() {
         filtered.sort((a, b) => a.display_name.localeCompare(b.display_name))
         break
       case 'downloads':
-        filtered.sort((a, b) => (b.download_count || 0) - (a.download_count || 0))
+        filtered.sort(
+          (a, b) => (b.download_count || 0) - (a.download_count || 0),
+        )
         break
       case 'rating':
         filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0))
@@ -227,9 +229,7 @@ export function MCPServersTab() {
   if (mcpServersError && !mcpServersInitialized) {
     return (
       <div className="text-center py-12">
-        <Text type="danger">
-          Failed to load MCP servers: {mcpServersError}
-        </Text>
+        <Text type="danger">Failed to load MCP servers: {mcpServersError}</Text>
         <div className="mt-4">
           <Button
             onClick={() => {

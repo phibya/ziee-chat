@@ -1,6 +1,7 @@
 pub mod ai;
 mod api;
-mod auth;
+pub mod auth; // Provider-based authentication module
+mod auth_jwt; // JWT token service
 mod database;
 pub mod global;
 mod processing;

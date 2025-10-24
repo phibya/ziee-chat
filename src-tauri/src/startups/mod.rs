@@ -19,6 +19,11 @@ pub async fn initialize_app_common() -> Result<(), String> {
     // Initialize database first - this must complete before other services
     initialize_database().await?;
 
+    // Initialize auth service (requires database to be ready)
+    if let Err(e) = crate::auth::initialize_auth_service().await {
+        eprintln!("Auth service initialization failed: {}", e);
+    }
+
     // Start all other services concurrently without waiting for completion
     // They will initialize in the background while the app continues
     tokio::spawn(async {

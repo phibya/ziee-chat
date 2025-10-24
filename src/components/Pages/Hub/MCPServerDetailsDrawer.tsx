@@ -1,11 +1,4 @@
-import {
-  Typography,
-  Tag,
-  Flex,
-  Button,
-  App,
-  Card,
-} from 'antd'
+import { Typography, Tag, Flex, Button, App, Card } from 'antd'
 import {
   DownloadOutlined,
   StarOutlined,
@@ -229,7 +222,9 @@ export function MCPServerDetailsDrawer({
         )}
 
         {/* Links */}
-        {(server.homepage || server.repository_url || server.documentation_url) && (
+        {(server.homepage ||
+          server.repository_url ||
+          server.documentation_url) && (
           <div>
             <Title level={5}>Links</Title>
             <Flex wrap className="gap-2">
@@ -255,7 +250,9 @@ export function MCPServerDetailsDrawer({
                 <Button
                   size="small"
                   icon={<FileTextOutlined />}
-                  onClick={() => window.open(server.documentation_url, '_blank')}
+                  onClick={() =>
+                    window.open(server.documentation_url, '_blank')
+                  }
                 >
                   Documentation
                 </Button>
@@ -266,9 +263,13 @@ export function MCPServerDetailsDrawer({
 
         {/* Platform Warning */}
         {!canInstall && (
-          <Card size="small" style={{ background: '#fff7e6', borderColor: '#ffd591' }}>
+          <Card
+            size="small"
+            style={{ background: '#fff7e6', borderColor: '#ffd591' }}
+          >
             <Text type="warning">
-              This server requires desktop application and cannot be installed in web mode.
+              This server requires desktop application and cannot be installed
+              in web mode.
             </Text>
           </Card>
         )}

@@ -3,6 +3,7 @@ import { useUserAssistantsStore } from './assistants'
 import { useAdminAssistantsStore } from './admin/assistants'
 import { useAdminUsersStore } from './admin/users'
 import { useAdminUserGroupsStore } from './admin/userGroups'
+import { useAdminAuthProvidersStore } from './admin/authProviders'
 import { useAdminProxySettingsStore } from './admin/proxySettings'
 import { useAdminNgrokSettingsStore } from './admin/ngrokSettings'
 import { useHardwareStore } from './admin/hardware'
@@ -70,6 +71,21 @@ export {
   updateUserGroup,
   useAdminUserGroupsStore,
 } from './admin/userGroups'
+// Admin Auth Providers store
+export {
+  clearProvidersError as clearAuthProvidersError,
+  clearTestError as clearAuthProviderTestError,
+  createAuthProvider,
+  deleteAuthProvider,
+  getAuthProvider,
+  getEnabledProviders as getEnabledAuthProviders,
+  getProviderById as getAuthProviderById,
+  loadAuthProviders,
+  testAuthProviderConnection,
+  toggleProviderEnabled as toggleAuthProviderEnabled,
+  updateAuthProvider,
+  useAdminAuthProvidersStore,
+} from './admin/authProviders'
 // Admin Proxy Settings store
 export {
   clearAdminProxySettingsStoreError,
@@ -155,6 +171,11 @@ export {
 export {
   authenticateUser,
   clearAuthenticationError,
+  clearOAuthError,
+  discoverProvider,
+  handleOAuthCallback,
+  initiateOAuthLogin,
+  loadEnabledProviders,
   logoutUser,
   registerNewUser,
   setupInitialAdminUser,
@@ -520,6 +541,7 @@ export const Stores = {
   Admin: createStoreProxy(useAdminStore),
   AdminUsers: createStoreProxy(useAdminUsersStore),
   AdminUserGroups: createStoreProxy(useAdminUserGroupsStore),
+  AdminAuthProviders: createStoreProxy(useAdminAuthProvidersStore),
   AdminProxySettings: createStoreProxy(useAdminProxySettingsStore),
   AdminNgrokSettings: createStoreProxy(useAdminNgrokSettingsStore),
   AdminHardware: createStoreProxy(useHardwareStore),

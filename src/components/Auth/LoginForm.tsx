@@ -1,8 +1,28 @@
 import React, { useEffect } from 'react'
-import { Alert, Button, Card, Form, Input, Typography } from 'antd'
-import { LockOutlined, UserOutlined } from '@ant-design/icons'
+import {
+  Alert,
+  Button,
+  Card,
+  Divider,
+  Flex,
+  Form,
+  Input,
+  Typography,
+} from 'antd'
+import {
+  GoogleOutlined,
+  LockOutlined,
+  UserOutlined,
+  WindowsOutlined,
+} from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
-import { authenticateUser, clearAuthenticationError, Stores } from '../../store'
+import {
+  authenticateUser,
+  clearAuthenticationError,
+  initiateOAuthLogin,
+  loadEnabledProviders,
+  Stores,
+} from '../../store'
 import type { LoginRequest } from '../../types'
 
 const { Text } = Typography
@@ -14,7 +34,14 @@ interface LoginFormProps {
 export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
   const { t } = useTranslation()
   const [form] = Form.useForm()
-  const { isLoading, error, isDesktop } = Stores.Auth
+  const {
+    isLoading,
+    error,
+    isDesktop,
+    availableProviders,
+    oauthLoading,
+    oauthError,
+  } = Stores.Auth
 
   const onFinish = async (values: LoginRequest) => {
     try {
@@ -26,12 +53,36 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
     }
   }
 
+  const handleOAuthLogin = async (providerId: string) => {
+    const redirectUri = `${window.location.origin}/auth/callback`
+    try {
+      await initiateOAuthLogin(providerId, redirectUri)
+    } catch (error) {
+      console.error('OAuth initiation failed:', error)
+    }
+  }
+
+  const getProviderIcon = (providerName: string) => {
+    const name = providerName.toLowerCase()
+    if (name.includes('google')) return <GoogleOutlined />
+    if (name.includes('microsoft') || name.includes('azure'))
+      return <WindowsOutlined />
+    return null
+  }
+
   useEffect(() => {
     if (isDesktop) {
       form.setFieldsValue({
         username_or_email: 'root',
         password: '',
       })
+    }
+  }, [isDesktop])
+
+  useEffect(() => {
+    // Load enabled OAuth providers on mount
+    if (!isDesktop) {
+      loadEnabledProviders()
     }
   }, [isDesktop])
 
@@ -94,6 +145,34 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
             {t('auth.signIn')}
           </Button>
         </Form.Item>
+
+        {!isDesktop && availableProviders.length > 0 && (
+          <>
+            <Divider>Or sign in with</Divider>
+            {oauthError && (
+              <Alert
+                message={oauthError}
+                type="error"
+                showIcon
+                closable
+                className="mb-4"
+              />
+            )}
+            <Flex vertical gap="small">
+              {availableProviders.map(provider => (
+                <Button
+                  key={provider.id}
+                  size="large"
+                  icon={getProviderIcon(provider.name)}
+                  onClick={() => handleOAuthLogin(provider.id)}
+                  loading={oauthLoading}
+                >
+                  Continue with {provider.name}
+                </Button>
+              ))}
+            </Flex>
+          </>
+        )}
 
         {!isDesktop && onSwitchToRegister && (
           <div className="text-center">

@@ -16,7 +16,9 @@ interface MCPServerCardProps {
 }
 
 export function MCPServerCard({ server }: MCPServerCardProps) {
-  const [selectedServer, setSelectedServer] = useState<HubMCPServer | null>(null)
+  const [selectedServer, setSelectedServer] = useState<HubMCPServer | null>(
+    null,
+  )
 
   return (
     <>
@@ -44,7 +46,9 @@ export function MCPServerCard({ server }: MCPServerCardProps) {
                   <Tag color="blue" className="text-xs">
                     {server.category}
                   </Tag>
-                  <Tag className="text-xs">{server.transport_type.toUpperCase()}</Tag>
+                  <Tag className="text-xs">
+                    {server.transport_type.toUpperCase()}
+                  </Tag>
                 </Flex>
               </div>
               <div className="flex gap-1 items-center justify-end">
@@ -92,7 +96,11 @@ export function MCPServerCard({ server }: MCPServerCardProps) {
                   <Text type="secondary" className="text-xs mr-2">
                     Tags:
                   </Text>
-                  <Flex wrap className="gap-1" style={{ display: 'inline-flex' }}>
+                  <Flex
+                    wrap
+                    className="gap-1"
+                    style={{ display: 'inline-flex' }}
+                  >
                     {server.tags.slice(0, 3).map((tag: string) => (
                       <Tag key={tag} color="default" className="text-xs">
                         {tag}

@@ -125,6 +125,9 @@ pub struct CreateUserRequest {
 pub struct LoginRequest {
     pub username_or_email: String,
     pub password: String,
+    /// Optional provider ID for explicit provider selection (auto-discovery if not provided)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub provider_id: Option<Uuid>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -3,7 +3,13 @@ import { persist, subscribeWithSelector } from 'zustand/middleware'
 import { ApiClient } from '../api/client.ts'
 import { invoke } from '@tauri-apps/api/core'
 import { isTauriView } from '../api/core'
-import type { CreateUserRequest, LoginRequest, User } from '../types'
+import type {
+  AuthProvider,
+  CreateUserRequest,
+  DiscoverProviderResponse,
+  LoginRequest,
+  User,
+} from '../types'
 
 interface AuthState {
   user?: User | null
@@ -14,6 +20,13 @@ interface AuthState {
   needsSetup: boolean
   isDesktop: boolean
   error?: string | null
+
+  // OAuth-related state
+  availableProviders: AuthProvider[]
+  oauthLoading: boolean
+  oauthError: string | null
+  discoveryLoading: boolean
+  discoveredProvider: DiscoverProviderResponse | null
 }
 
 const defaultState: AuthState = {
@@ -25,6 +38,11 @@ const defaultState: AuthState = {
   needsSetup: false,
   isDesktop: false,
   error: null,
+  availableProviders: [],
+  oauthLoading: false,
+  oauthError: null,
+  discoveryLoading: false,
+  discoveredProvider: null,
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -226,4 +244,114 @@ export const auth = async () => {
     })
     throw error
   }
+}
+
+// OAuth actions
+export const loadEnabledProviders = async (): Promise<void> => {
+  try {
+    const providers = await ApiClient.Auth.listEnabledProviders()
+    useAuthStore.setState({
+      availableProviders: providers,
+    })
+  } catch (error) {
+    console.error('Failed to load enabled providers:', error)
+  }
+}
+
+export const discoverProvider = async (
+  usernameOrEmail: string,
+): Promise<void> => {
+  if (!usernameOrEmail.trim()) {
+    useAuthStore.setState({ discoveredProvider: null })
+    return
+  }
+
+  useAuthStore.setState({ discoveryLoading: true })
+  try {
+    const result = await ApiClient.Auth.discoverProvider({
+      identifier: usernameOrEmail,
+    })
+    useAuthStore.setState({
+      discoveredProvider: result,
+      discoveryLoading: false,
+    })
+  } catch (error) {
+    console.error('Provider discovery failed:', error)
+    useAuthStore.setState({
+      discoveredProvider: null,
+      discoveryLoading: false,
+    })
+  }
+}
+
+export const initiateOAuthLogin = async (
+  providerId: string,
+  redirectUri: string,
+): Promise<void> => {
+  useAuthStore.setState({ oauthLoading: true, oauthError: null })
+  try {
+    const response = await ApiClient.Auth.initOAuth({
+      provider_id: providerId,
+      redirect_uri: redirectUri,
+    })
+
+    // Store session key in sessionStorage for callback handler
+    sessionStorage.setItem('oauth_session_key', response.session_key)
+    sessionStorage.setItem('oauth_provider_id', providerId)
+
+    // Redirect to OAuth provider
+    window.location.href = response.redirect_url
+  } catch (error) {
+    useAuthStore.setState({
+      oauthError:
+        error instanceof Error
+          ? error.message
+          : 'Failed to initiate OAuth login',
+      oauthLoading: false,
+    })
+    throw error
+  }
+}
+
+export const handleOAuthCallback = async (
+  providerId: string,
+  code: string,
+  state: string,
+  sessionKey: string,
+): Promise<void> => {
+  useAuthStore.setState({ oauthLoading: true, oauthError: null })
+  try {
+    const response = await ApiClient.Auth.oauthCallback({
+      provider_id: providerId,
+      code,
+      state,
+      session_key: sessionKey,
+    })
+
+    // Clear session storage
+    sessionStorage.removeItem('oauth_session_key')
+    sessionStorage.removeItem('oauth_provider_id')
+
+    useAuthStore.setState({
+      user: response.user,
+      token: response.token,
+      isAuthenticated: true,
+      oauthLoading: false,
+      oauthError: null,
+    })
+  } catch (error) {
+    useAuthStore.setState({
+      oauthError:
+        error instanceof Error ? error.message : 'OAuth callback failed',
+      oauthLoading: false,
+      isAuthenticated: false,
+      token: null,
+      user: null,
+    })
+    throw error
+  }
+}
+
+export const clearOAuthError = (): void => {
+  useAuthStore.setState({ oauthError: null })
 }

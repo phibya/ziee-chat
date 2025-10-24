@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::api::app::is_desktop_app;
 use crate::api::errors::{ApiResult, AppError, ErrorCode};
-use crate::auth::AuthService;
+use crate::auth_jwt::AuthService;
 use crate::database::models::*;
 use crate::database::queries::users;
 
@@ -210,9 +210,12 @@ pub async fn init_app(Json(payload): Json<CreateUserRequest>) -> ApiResult<Json<
 }
 
 /// Login endpoint
+/// NOTE: Provider-based authentication is temporarily disabled until user provisioning is fully implemented
+/// See auth/user_provisioning.rs for required database query functions
 #[debug_handler]
 pub async fn login(Json(payload): Json<LoginRequest>) -> ApiResult<Json<AuthResponse>> {
-    // For web app, authenticate with credentials
+    // For web app, authenticate with credentials using the old method
+    // TODO: Re-enable provider-based authentication once user provisioning is implemented
     match AUTH_SERVICE
         .authenticate_user(&payload.username_or_email, &payload.password)
         .await
@@ -328,6 +331,116 @@ pub async fn register(Json(payload): Json<CreateUserRequest>) -> ApiResult<Json<
         Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
             AppError::from_string(ErrorCode::UserCreationFailed, e),
+        )),
+    }
+}
+
+/// OAuth Login Initiation
+/// Initiates OAuth/OIDC authentication flow for a specific provider
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct InitOAuthRequest {
+    pub redirect_uri: String,
+}
+
+#[derive(Debug, Serialize, JsonSchema)]
+pub struct OAuthLoginResponse {
+    pub redirect_url: String,
+    pub session_key: String,
+}
+
+#[debug_handler]
+pub async fn init_oauth_login(
+    axum::extract::Path(provider_id): axum::extract::Path<uuid::Uuid>,
+    Json(payload): Json<InitOAuthRequest>,
+) -> ApiResult<Json<OAuthLoginResponse>> {
+    let auth_service = crate::auth::get_auth_service();
+
+    // Init OAuth flow through auth service
+    match auth_service
+        .init_oauth_flow(provider_id, &payload.redirect_uri)
+        .await
+    {
+        Ok(oauth_result) => Ok((
+            StatusCode::OK,
+            Json(OAuthLoginResponse {
+                redirect_url: oauth_result.redirect_url,
+                session_key: oauth_result.session_key,
+            }),
+        )),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            AppError::internal_error(&format!("Failed to init OAuth flow: {}", e)),
+        )),
+    }
+}
+
+/// OAuth Callback
+/// Handles OAuth/OIDC callback after user authentication with provider
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct OAuthCallbackQuery {
+    pub code: String,
+    pub state: String,
+    pub session_key: String,
+}
+
+#[debug_handler]
+pub async fn oauth_callback(
+    axum::extract::Path(provider_id): axum::extract::Path<uuid::Uuid>,
+    axum::extract::Query(query): axum::extract::Query<OAuthCallbackQuery>,
+) -> ApiResult<Json<AuthResponse>> {
+    let auth_service = crate::auth::get_auth_service();
+
+    // Handle OAuth callback through auth service
+    let auth_result = auth_service
+        .handle_oauth_callback(provider_id, &query.code, &query.state, &query.session_key)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::UNAUTHORIZED,
+                AppError::internal_error(&format!("OAuth callback failed: {}", e)),
+            )
+        })?;
+
+    // Provision user (create or update based on auth result)
+    let user = crate::auth::user_provisioning::provision_user(provider_id, &auth_result)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error(&format!("User provisioning failed: {}", e)),
+            )
+        })?;
+
+    // Generate JWT token for the user
+    match AUTH_SERVICE.generate_token(&user) {
+        Ok(token) => {
+            let expires_at = chrono::Utc::now() + chrono::Duration::hours(24 * 7);
+
+            // Add login token to database
+            let login_token = AUTH_SERVICE.generate_login_token();
+            let when_created = chrono::Utc::now().timestamp_millis();
+
+            users::add_login_token(user.id, login_token, when_created, Some(expires_at))
+                .await
+                .map_err(|e| {
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        AppError::from_error(ErrorCode::AuthTokenStorageFailed, e),
+                    )
+                })?;
+
+            Ok((
+                StatusCode::OK,
+                Json(AuthResponse {
+                    token,
+                    user: user.sanitized(),
+                    expires_at,
+                }),
+            ))
+        }
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            AppError::from_error(ErrorCode::AuthTokenGenerationFailed, e),
         )),
     }
 }

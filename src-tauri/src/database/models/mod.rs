@@ -1,5 +1,7 @@
 pub mod api_proxy_server_model;
 pub mod assistant;
+pub mod auth_provider;
+pub mod auth_session;
 pub mod chat;
 pub mod config;
 pub mod download_instance;
@@ -12,10 +14,13 @@ pub mod provider;
 pub mod proxy;
 pub mod repository;
 pub mod user;
+pub mod user_auth_link;
 pub mod user_group_mcp_server;
 
 // Re-export all structures for convenience
 pub use assistant::*;
+pub use auth_provider::*;
+pub use auth_session::*;
 pub use chat::*;
 pub use config::*;
 pub use download_instance::*;
@@ -28,4 +33,5 @@ pub use provider::*;
 pub use proxy::*;
 pub use repository::*;
 pub use user::*;
+pub use user_auth_link::*;
 pub use user_group_mcp_server::*;

@@ -1,4 +1,4 @@
-use crate::auth::AuthService;
+use crate::auth_jwt::AuthService;
 
 #[tauri::command]
 pub fn get_http_port() -> u16 {

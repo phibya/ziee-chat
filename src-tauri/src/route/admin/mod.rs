@@ -1,5 +1,6 @@
 pub mod api_proxy_server;
 pub mod assistants;
+pub mod auth_providers;
 pub mod config;
 pub mod downloads;
 pub mod engines;
@@ -24,6 +25,7 @@ pub fn admin_routes() -> ApiRouter {
             .merge(models::admin_model_routes())
             .merge(repositories::admin_repository_routes())
             .merge(assistants::admin_assistant_routes())
+            .merge(auth_providers::auth_providers_routes())
             .merge(downloads::admin_download_routes())
             .merge(engines::admin_engine_routes())
             .merge(hardware::hardware_routes())

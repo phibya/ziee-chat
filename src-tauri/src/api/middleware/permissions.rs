@@ -5,6 +5,7 @@ use axum::{extract::Request, http::StatusCode, middleware::Next, response::Respo
 /// Macro to generate permission checking middleware functions
 macro_rules! permission_middleware {
     ($fn_name:ident, $permission:expr) => {
+        #[allow(dead_code)]
         pub async fn $fn_name(req: Request, next: Next) -> Result<Response, StatusCode> {
             let user = get_authenticated_user(&req)?;
 
@@ -227,4 +228,36 @@ permission_middleware!(
 permission_middleware!(
     mcp_admin_servers_edit_middleware,
     Permission::McpAdminServersEdit
+);
+
+// Auth Provider permissions
+permission_middleware!(
+    auth_providers_read_middleware,
+    Permission::AuthProvidersRead
+);
+permission_middleware!(
+    auth_providers_create_middleware,
+    Permission::AuthProvidersCreate
+);
+permission_middleware!(
+    auth_providers_edit_middleware,
+    Permission::AuthProvidersEdit
+);
+permission_middleware!(
+    auth_providers_delete_middleware,
+    Permission::AuthProvidersDelete
+);
+permission_middleware!(
+    auth_providers_test_middleware,
+    Permission::AuthProvidersTest
+);
+
+// Auth Config permissions
+permission_middleware!(
+    config_auth_read_middleware,
+    Permission::ConfigAuthRead
+);
+permission_middleware!(
+    config_auth_edit_middleware,
+    Permission::ConfigAuthEdit
 );

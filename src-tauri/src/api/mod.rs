@@ -2,6 +2,7 @@ pub mod api_proxy_server;
 pub(crate) mod app;
 pub mod assistants;
 pub mod auth;
+pub mod auth_providers;
 pub mod chat;
 pub mod configuration;
 pub mod conversation;

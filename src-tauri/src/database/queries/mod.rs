@@ -1,5 +1,7 @@
 pub mod api_proxy_server_models;
 pub mod assistants;
+pub mod auth_providers;
+pub mod auth_sessions;
 pub mod branches;
 pub mod chat;
 pub mod configuration;
@@ -13,11 +15,17 @@ pub mod models;
 pub mod projects;
 pub mod providers;
 pub mod repositories;
+pub mod user_auth_links;
 pub mod user_group_mcp_servers;
 pub mod user_group_providers;
 pub mod user_groups;
 pub mod user_settings;
 pub mod users;
+
+// Alias for compatibility with user provisioning
+pub mod groups {
+    pub use super::user_groups::get_by_name;
+}
 
 use crate::database::DATABASE_POOL;
 use sqlx::{Pool, Postgres};

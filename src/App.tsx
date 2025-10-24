@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom'
 import { AuthGuard } from './components/Auth'
+import { OAuthCallback } from './components/Auth/OAuthCallback'
 import { ThemeProvider } from './components/providers/ThemeProvider'
 import { AppLayout } from './components/Layout/AppLayout'
 import { useTranslation } from 'react-i18next'
@@ -23,6 +24,7 @@ import {
   AdminGeneralSettings,
   ApiProxyServerSettings,
   AppearanceSettings,
+  AuthProvidersSettings,
   EnginesSettings,
   GeneralSettings,
   HardwareSettings,
@@ -55,243 +57,276 @@ function App() {
 
   return (
     <ThemeProvider>
-      <AuthGuard>
-        <Router>
-          <Routes>
-            {/* Hardware Monitor Route - Outside AppLayout for popup usage */}
-            <Route path="/hardware-monitor" element={<HardwareMonitor />} />
+      <Router>
+        <Routes>
+          {/* OAuth Callback Route - MUST be outside AuthGuard */}
+          <Route path="/auth/callback" element={<OAuthCallback />} />
 
-            {/* API Proxy Log Monitor Route - Outside AppLayout for popup usage */}
-            <Route
-              path="/api-proxy-log-monitor"
-              element={<ApiProxyLogMonitor />}
-            />
+          {/* All other routes inside AuthGuard */}
+          <Route
+            path="/*"
+            element={
+              <AuthGuard>
+                <Routes>
+                  {/* Hardware Monitor Route - Outside AppLayout for popup usage */}
+                  <Route
+                    path="/hardware-monitor"
+                    element={<HardwareMonitor />}
+                  />
 
-            {/* Main App Routes - Inside AppLayout */}
-            <Route
-              path="/*"
-              element={
-                <AppLayout>
-                  <Routes>
-                    <Route
-                      path="/"
-                      element={
-                        <PagePermissionGuard403
-                          permissions={[Permission.ChatCreate]}
-                        >
-                          <NewChatInterface />
-                        </PagePermissionGuard403>
-                      }
-                    />
-                    <Route
-                      path="/conversation/:conversationId"
-                      element={
-                        <PagePermissionGuard403
-                          permissions={[Permission.ChatRead]}
-                        >
-                          <ExistingChatInterface />
-                        </PagePermissionGuard403>
-                      }
-                    />
-                    <Route
-                      path="/conversations"
-                      element={
-                        <PagePermissionGuard403
-                          permissions={[Permission.ChatRead]}
-                        >
-                          <ChatHistoryPage />
-                        </PagePermissionGuard403>
-                      }
-                    />
-                    <Route
-                      path="/projects"
-                      element={
-                        <PagePermissionGuard403
-                          permissions={[Permission.ProjectsRead]}
-                        >
-                          <ProjectsPage />
-                        </PagePermissionGuard403>
-                      }
-                    />
-                    <Route
-                      path="/projects/:projectId"
-                      element={
-                        <PagePermissionGuard403
-                          permissions={[Permission.ProjectsRead]}
-                        >
-                          <ProjectDetailsPage />
-                        </PagePermissionGuard403>
-                      }
-                    />
-                    <Route
-                      path="/hub/:activeTab?"
-                      element={
-                        <PagePermissionGuard403
-                          permissions={[
-                            Permission.HubModelsRead,
-                            Permission.HubAssistantsRead,
-                          ]}
-                          match={'any'}
-                        >
-                          <HubPage />
-                        </PagePermissionGuard403>
-                      }
-                    />
-                    <Route path="/assistants" element={<AssistantsPage />} />
-                    <Route path="/settings" element={<SettingsPage />}>
-                      <Route path="" element={<GeneralSettings />} />
-                      <Route path="general" element={<GeneralSettings />} />
-                      <Route
-                        path="appearance"
-                        element={<AppearanceSettings />}
-                      />
-                      <Route path="privacy" element={<PrivacySettings />} />
-                      <Route
-                        path="providers"
-                        element={
-                          <PagePermissionGuard403
-                            permissions={[Permission.ProvidersRead]}
-                          >
-                            <ProvidersSettings />
-                          </PagePermissionGuard403>
-                        }
-                      />
-                      <Route
-                        path="providers/:providerId"
-                        element={
-                          <PagePermissionGuard403
-                            permissions={[Permission.ProvidersRead]}
-                          >
-                            <ProvidersSettings />
-                          </PagePermissionGuard403>
-                        }
-                      />
-                      <Route
-                        path="repositories"
-                        element={
-                          <PagePermissionGuard403
-                            permissions={[Permission.RepositoriesRead]}
-                          >
-                            <ModelRepositorySettings />
-                          </PagePermissionGuard403>
-                        }
-                      />
-                      <Route
-                        path="hardware"
-                        element={
-                          <PagePermissionGuard403
-                            permissions={[Permission.HardwareRead]}
-                          >
-                            <HardwareSettings />
-                          </PagePermissionGuard403>
-                        }
-                      />
-                      <Route
-                        path="mcp-servers"
-                        element={
-                          <PagePermissionGuard403
-                            permissions={[Permission.McpServersRead]}
-                          >
-                            <MCPServersSettings />
-                          </PagePermissionGuard403>
-                        }
-                      />
-                      <Route
-                        path="mcp-admin"
-                        element={
-                          <PagePermissionGuard403
-                            permissions={[Permission.McpAdminServersRead]}
-                          >
-                            <MCPAdminPage />
-                          </PagePermissionGuard403>
-                        }
-                      />
-                      <Route
-                        path="https-proxy"
-                        element={
-                          <PagePermissionGuard403
-                            permissions={[Permission.ConfigProxyRead]}
-                          >
-                            <HttpsProxySettings />
-                          </PagePermissionGuard403>
-                        }
-                      />
-                      <Route
-                        path="web-app"
-                        element={
-                          <PagePermissionGuard403
-                            permissions={[Permission.ConfigNgrokRead]}
-                          >
-                            <NgrokSettings />
-                          </PagePermissionGuard403>
-                        }
-                      />
-                      <Route
-                        path="api-proxy-server"
-                        element={
-                          <PagePermissionGuard403
-                            permissions={[Permission.ApiProxyRead]}
-                          >
-                            <ApiProxyServerSettings />
-                          </PagePermissionGuard403>
-                        }
-                      />
-                      <Route
-                        path="admin-general"
-                        element={<AdminGeneralSettings />}
-                      />
-                      <Route
-                        path="admin-appearance"
-                        element={<AdminAppearanceSettings />}
-                      />
-                      <Route
-                        path="admin-assistants"
-                        element={
-                          <PagePermissionGuard403
-                            permissions={[Permission.AssistantsAdminRead]}
-                          >
-                            <AdminAssistantsSettings />
-                          </PagePermissionGuard403>
-                        }
-                      />
-                      <Route
-                        path="engines"
-                        element={
-                          <PagePermissionGuard403
-                            permissions={[Permission.EnginesRead]}
-                          >
-                            <EnginesSettings />
-                          </PagePermissionGuard403>
-                        }
-                      />
-                      <Route
-                        path="users"
-                        element={
-                          <PagePermissionGuard403
-                            permissions={[Permission.UsersRead]}
-                          >
-                            <UsersSettings />
-                          </PagePermissionGuard403>
-                        }
-                      />
-                      <Route
-                        path="user-groups"
-                        element={
-                          <PagePermissionGuard403
-                            permissions={[Permission.GroupsRead]}
-                          >
-                            <UserGroupsSettings />
-                          </PagePermissionGuard403>
-                        }
-                      />
-                    </Route>
-                  </Routes>
-                </AppLayout>
-              }
-            />
-          </Routes>
-        </Router>
-      </AuthGuard>
+                  {/* API Proxy Log Monitor Route - Outside AppLayout for popup usage */}
+                  <Route
+                    path="/api-proxy-log-monitor"
+                    element={<ApiProxyLogMonitor />}
+                  />
+
+                  {/* Main App Routes - Inside AppLayout */}
+                  <Route
+                    path="/*"
+                    element={
+                      <AppLayout>
+                        <Routes>
+                          <Route
+                            path="/"
+                            element={
+                              <PagePermissionGuard403
+                                permissions={[Permission.ChatCreate]}
+                              >
+                                <NewChatInterface />
+                              </PagePermissionGuard403>
+                            }
+                          />
+                          <Route
+                            path="/conversation/:conversationId"
+                            element={
+                              <PagePermissionGuard403
+                                permissions={[Permission.ChatRead]}
+                              >
+                                <ExistingChatInterface />
+                              </PagePermissionGuard403>
+                            }
+                          />
+                          <Route
+                            path="/conversations"
+                            element={
+                              <PagePermissionGuard403
+                                permissions={[Permission.ChatRead]}
+                              >
+                                <ChatHistoryPage />
+                              </PagePermissionGuard403>
+                            }
+                          />
+                          <Route
+                            path="/projects"
+                            element={
+                              <PagePermissionGuard403
+                                permissions={[Permission.ProjectsRead]}
+                              >
+                                <ProjectsPage />
+                              </PagePermissionGuard403>
+                            }
+                          />
+                          <Route
+                            path="/projects/:projectId"
+                            element={
+                              <PagePermissionGuard403
+                                permissions={[Permission.ProjectsRead]}
+                              >
+                                <ProjectDetailsPage />
+                              </PagePermissionGuard403>
+                            }
+                          />
+                          <Route
+                            path="/hub/:activeTab?"
+                            element={
+                              <PagePermissionGuard403
+                                permissions={[
+                                  Permission.HubModelsRead,
+                                  Permission.HubAssistantsRead,
+                                ]}
+                                match={'any'}
+                              >
+                                <HubPage />
+                              </PagePermissionGuard403>
+                            }
+                          />
+                          <Route
+                            path="/assistants"
+                            element={<AssistantsPage />}
+                          />
+                          <Route path="/settings" element={<SettingsPage />}>
+                            <Route path="" element={<GeneralSettings />} />
+                            <Route
+                              path="general"
+                              element={<GeneralSettings />}
+                            />
+                            <Route
+                              path="appearance"
+                              element={<AppearanceSettings />}
+                            />
+                            <Route
+                              path="privacy"
+                              element={<PrivacySettings />}
+                            />
+                            <Route
+                              path="providers"
+                              element={
+                                <PagePermissionGuard403
+                                  permissions={[Permission.ProvidersRead]}
+                                >
+                                  <ProvidersSettings />
+                                </PagePermissionGuard403>
+                              }
+                            />
+                            <Route
+                              path="providers/:providerId"
+                              element={
+                                <PagePermissionGuard403
+                                  permissions={[Permission.ProvidersRead]}
+                                >
+                                  <ProvidersSettings />
+                                </PagePermissionGuard403>
+                              }
+                            />
+                            <Route
+                              path="repositories"
+                              element={
+                                <PagePermissionGuard403
+                                  permissions={[Permission.RepositoriesRead]}
+                                >
+                                  <ModelRepositorySettings />
+                                </PagePermissionGuard403>
+                              }
+                            />
+                            <Route
+                              path="hardware"
+                              element={
+                                <PagePermissionGuard403
+                                  permissions={[Permission.HardwareRead]}
+                                >
+                                  <HardwareSettings />
+                                </PagePermissionGuard403>
+                              }
+                            />
+                            <Route
+                              path="mcp-servers"
+                              element={
+                                <PagePermissionGuard403
+                                  permissions={[Permission.McpServersRead]}
+                                >
+                                  <MCPServersSettings />
+                                </PagePermissionGuard403>
+                              }
+                            />
+                            <Route
+                              path="mcp-admin"
+                              element={
+                                <PagePermissionGuard403
+                                  permissions={[Permission.McpAdminServersRead]}
+                                >
+                                  <MCPAdminPage />
+                                </PagePermissionGuard403>
+                              }
+                            />
+                            <Route
+                              path="https-proxy"
+                              element={
+                                <PagePermissionGuard403
+                                  permissions={[Permission.ConfigProxyRead]}
+                                >
+                                  <HttpsProxySettings />
+                                </PagePermissionGuard403>
+                              }
+                            />
+                            <Route
+                              path="web-app"
+                              element={
+                                <PagePermissionGuard403
+                                  permissions={[Permission.ConfigNgrokRead]}
+                                >
+                                  <NgrokSettings />
+                                </PagePermissionGuard403>
+                              }
+                            />
+                            <Route
+                              path="api-proxy-server"
+                              element={
+                                <PagePermissionGuard403
+                                  permissions={[Permission.ApiProxyRead]}
+                                >
+                                  <ApiProxyServerSettings />
+                                </PagePermissionGuard403>
+                              }
+                            />
+                            <Route
+                              path="admin-general"
+                              element={<AdminGeneralSettings />}
+                            />
+                            <Route
+                              path="admin-appearance"
+                              element={<AdminAppearanceSettings />}
+                            />
+                            <Route
+                              path="admin-assistants"
+                              element={
+                                <PagePermissionGuard403
+                                  permissions={[Permission.AssistantsAdminRead]}
+                                >
+                                  <AdminAssistantsSettings />
+                                </PagePermissionGuard403>
+                              }
+                            />
+                            <Route
+                              path="engines"
+                              element={
+                                <PagePermissionGuard403
+                                  permissions={[Permission.EnginesRead]}
+                                >
+                                  <EnginesSettings />
+                                </PagePermissionGuard403>
+                              }
+                            />
+                            <Route
+                              path="users"
+                              element={
+                                <PagePermissionGuard403
+                                  permissions={[Permission.UsersRead]}
+                                >
+                                  <UsersSettings />
+                                </PagePermissionGuard403>
+                              }
+                            />
+                            <Route
+                              path="user-groups"
+                              element={
+                                <PagePermissionGuard403
+                                  permissions={[Permission.GroupsRead]}
+                                >
+                                  <UserGroupsSettings />
+                                </PagePermissionGuard403>
+                              }
+                            />
+                            <Route
+                              path="auth-providers"
+                              element={
+                                <PagePermissionGuard403
+                                  permissions={[Permission.AuthProvidersRead]}
+                                >
+                                  <AuthProvidersSettings />
+                                </PagePermissionGuard403>
+                              }
+                            />
+                          </Route>
+                        </Routes>
+                      </AppLayout>
+                    }
+                  />
+                </Routes>
+              </AuthGuard>
+            }
+          />
+        </Routes>
+      </Router>
     </ThemeProvider>
   )
 }
